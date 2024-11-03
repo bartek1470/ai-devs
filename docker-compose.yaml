@@ -1,0 +1,21 @@
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    # https://stackoverflow.com/a/78501628
+    entrypoint: "bash -c '/entrypoint.sh llama3.2:1b gemma2:2b'"
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./entrypoint.sh:/entrypoint.sh
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+volumes:
+  ollama:

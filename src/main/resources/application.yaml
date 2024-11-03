@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: ai-devs
+  main:
+    web-application-type: none
+  shell:
+    context:
+      close: true
+    interactive:
+      enabled: true
+    history:
+      name: ${spring.application.name}.history.log
+aidevs:
+  poligon:
+    url: ${AIDEVS_POLIGON_URL}
+    api-key: ${AIDEVS_POLIGON_API_KEY}
+logging:
+  file:
+    name: ${spring.application.name}.log
+  pattern:
+    console: "" # disable console logging without logback.xml
+  level:
+    org:
+      springframework:
+        ai:
+          chat:
+            client:
+              advisor: debug

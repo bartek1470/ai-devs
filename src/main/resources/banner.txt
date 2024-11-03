@@ -1,0 +1,1 @@
+${Ansi.GREEN}${spring.application.name}${Ansi.DEFAULT} :: Spring Boot :: ${spring-boot.version}
