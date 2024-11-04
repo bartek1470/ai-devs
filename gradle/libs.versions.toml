@@ -8,9 +8,11 @@ spring-ai = "1.0.0-M3"
 spring-boot = "3.3.5"
 spring-dependencyManagement = "1.1.6"
 spring-shell = "3.3.3"
+jsoup = "1.18.1"
 
 [libraries]
 jackson-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin" }
+jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 junit-platformLauncher = { group = "org.junit.platform", name = "junit-platform-launcher" }
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect" }

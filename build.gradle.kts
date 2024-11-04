@@ -38,6 +38,7 @@ dependencyManagement {
 }
 
 dependencies {
+    implementation(libs.jsoup)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.kotlin)
     implementation(libs.spring.ai.openai.starter)
