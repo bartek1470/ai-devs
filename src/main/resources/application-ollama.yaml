@@ -5,4 +5,4 @@ spring:
       chat:
         base-url: http://localhost:11434
         options:
-          model: llama3.2:1b
+          model: gemma2:2b
