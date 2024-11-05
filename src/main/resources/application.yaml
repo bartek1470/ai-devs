@@ -26,3 +26,8 @@ logging:
           chat:
             client:
               advisor: debug
+    pl.bartek: debug
+    pl:
+      bartek:
+        aidevs:
+          LoggingRestClientInterceptor: debug
