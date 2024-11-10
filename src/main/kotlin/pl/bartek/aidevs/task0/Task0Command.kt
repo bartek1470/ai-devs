@@ -13,7 +13,7 @@ class Task0Command(
     @Command(command = ["task0"])
     fun run(): AiDevsPoligonAnswerResponse {
         val data = apiClient.fetchTask0Data()
-        val response = apiClient.sendAnswer(AiDevsPoligonAnswer(Task.POLIGON, data))
+        val response = apiClient.sendAnswer("NEXT COMMITS IN ENVS", AiDevsPoligonAnswer(Task.POLIGON, data))
         return response
     }
 }

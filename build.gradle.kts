@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.kotlin)
     implementation(libs.spring.ai.openai.starter)
+    implementation(libs.spring.ai.ollama)
     implementation(libs.spring.shell.starter)
     implementation(libs.kotlin.logging)
     developmentOnly(libs.spring.boot.devtools)
