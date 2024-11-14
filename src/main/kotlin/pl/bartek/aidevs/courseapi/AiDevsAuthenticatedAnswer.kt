@@ -1,8 +1,8 @@
-package pl.bartek.aidevs.poligon
+package pl.bartek.aidevs.courseapi
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-data class AiDevsPoligonAuthenticatedAnswer<T>(
+data class AiDevsAuthenticatedAnswer<T>(
     val task: Task,
     val answer: T,
     @JsonProperty("apikey")

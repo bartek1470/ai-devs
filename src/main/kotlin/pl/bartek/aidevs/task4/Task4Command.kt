@@ -4,27 +4,20 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.jsoup.Jsoup
-import org.springframework.http.HttpStatusCode
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
-import org.springframework.http.client.BufferingClientHttpRequestFactory
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
-import pl.bartek.aidevs.LoggingRestClientInterceptor
+import org.springframework.web.util.UriComponentsBuilder
 
 @Command(group = "task")
-class Task4Command {
-    private val restClient =
-        RestClient
-            .builder()
-            .requestFactory(BufferingClientHttpRequestFactory(SimpleClientHttpRequestFactory()))
-            .requestInterceptor(LoggingRestClientInterceptor())
-            .defaultStatusHandler(HttpStatusCode::isError) { _, _ -> }
-            .baseUrl("NEXT COMMITS IN ENVS")
-            .build()
-
+class Task4Command(
+    @Value("\${aidevs.task.4.answer-url}") private val answerUrl: String,
+    @Value("\${aidevs.task.4.file-base-url}") private val fileBaseUrl: String,
+    private val restClient: RestClient,
+) {
     @Command(command = ["task4"])
     fun run(ctx: CommandContext) {
         val request =
@@ -44,12 +37,14 @@ class Task4Command {
                |7. Return a found path in a format `<RESULT>{"steps": "UP, LEFT, RIGHT, DOWN"}</RESULT>`
             """.trimMargin()
 
-        println(request)
-        println()
+        ctx.terminal.writer().println(request)
+        ctx.terminal.writer().println()
+        ctx.terminal.writer().flush()
 
         val response =
             restClient
                 .post()
+                .uri(answerUrl)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(
                     LinkedMultiValueMap<String, String>().apply {
@@ -62,18 +57,23 @@ class Task4Command {
                 .body(String::class.java)!!
 
         val value = ObjectMapper().readValue<JsonNode>(response)
-        println(response)
-        println()
-        println()
-        println(value["steps"])
-        println()
-        println()
+
         val message = value["message"]?.textValue()
         val parsedMessage =
             message?.substringAfter("<")?.let {
                 Jsoup.parse("<$it").wholeText()
             }
-        println(parsedMessage)
-        println(value["filename"])
+        val filename = value["filename"]
+        val fileUrl =
+            UriComponentsBuilder
+                .fromHttpUrl(fileBaseUrl)
+                .pathSegment(filename.textValue())
+                .build()
+                .toUriString()
+
+        ctx.terminal.writer().println("Steps: ${value["steps"].textValue()}")
+        ctx.terminal.writer().println("Message: $parsedMessage")
+        ctx.terminal.writer().println("File to download: $fileUrl")
+        ctx.terminal.writer().flush()
     }
 }

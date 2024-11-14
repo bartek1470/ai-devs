@@ -7,13 +7,31 @@ spring:
     context:
       close: true
     interactive:
-      enabled: true
+      enabled: false
     history:
       name: ${spring.application.name}.history.log
 aidevs:
-  poligon:
-    url: ${AIDEVS_POLIGON_URL}
-    api-key: ${AIDEVS_POLIGON_API_KEY}
+  api-key: ${AIDEVS_APIKEY}
+  task:
+    0:
+      data-url: ${AIDEVS_TASK_0_DATAURL}
+      answer-url: ${AIDEVS_TASK_0_ANSWERURL}
+    1:
+      robot-system:
+          url: ${AIDEVS_TASK_1_ROBOTSYSTEM_URL}
+          username: ${AIDEVS_TASK_1_ROBOTSYSTEM_USERNAME}
+          password: ${AIDEVS_TASK_1_ROBOTSYSTEM_PASSWORD}
+    2:
+      conversation-url: ${AIDEVS_TASK_2_CONVERSATIONURL}
+    3:
+      data-url: ${AIDEVS_TASK_3_DATAURL}
+      answer-url: ${AIDEVS_TASK_3_ANSWERURL}
+    4:
+      file-base-url: ${AIDEVS_TASK_4_FILEBASEURL}
+      answer-url: ${AIDEVS_TASK_4_ANSWERURL}
+    5:
+      data-url: ${AIDEVS_TASK_5_DATAURL}
+      answer-url: ${AIDEVS_TASK_5_ANSWERURL}
 logging:
   file:
     name: ${spring.application.name}.log

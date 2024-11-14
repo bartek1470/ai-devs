@@ -2,42 +2,25 @@ package pl.bartek.aidevs.task3
 
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpStatusCode
-import org.springframework.http.client.BufferingClientHttpRequestFactory
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
-import pl.bartek.aidevs.LoggingRestClientInterceptor
-import pl.bartek.aidevs.poligon.AiDevsPoligonAnswerResponse
-import pl.bartek.aidevs.poligon.AiDevsPoligonApiClient
-import pl.bartek.aidevs.poligon.AiDevsPoligonAuthenticatedAnswer
-import pl.bartek.aidevs.poligon.Task
+import pl.bartek.aidevs.courseapi.AiDevsAnswer
+import pl.bartek.aidevs.courseapi.AiDevsApiClient
+import pl.bartek.aidevs.courseapi.Task
 
 @Command(group = "task")
 class Task3Command(
-    @Value("\${aidevs.poligon.api-key}") private val apiKey: String,
+    @Value("\${aidevs.api-key}") private val apiKey: String,
+    @Value("\${aidevs.task.3.data-url}") private val dataUrl: String,
+    @Value("\${aidevs.task.3.answer-url}") private val answerUrl: String,
     private val chatClient: ChatClient,
-    private val poligonApiClient: AiDevsPoligonApiClient,
+    private val apiClient: AiDevsApiClient,
+    private val restClient: RestClient,
 ) {
-    private val dataFileUrl = "NEXT COMMITS IN ENVS"
-    private val restClient =
-        RestClient
-            .builder()
-            .requestFactory(BufferingClientHttpRequestFactory(SimpleClientHttpRequestFactory()))
-            .requestInterceptor(LoggingRestClientInterceptor())
-            .defaultStatusHandler(HttpStatusCode::isError) { _, _ -> }
-            .build()
-
     @Command(command = ["task3"])
     fun run(ctx: CommandContext) {
-        val industrialRobotCalibrationFile =
-            restClient
-                .get()
-                .uri(dataFileUrl)
-                .retrieve()
-                .body(IndustrialRobotCalibrationFile::class.java) ?: throw IllegalStateException("Cannot get file")
-
+        val industrialRobotCalibrationFile = fetchInputData()
         val newTestData =
             industrialRobotCalibrationFile.testData.map { testDataItem ->
                 val answer =
@@ -66,17 +49,21 @@ class Task3Command(
             }
 
         val answer =
-            restClient
-                .post()
-                .uri("NEXT COMMITS IN ENVS")
-                .body(
-                    AiDevsPoligonAuthenticatedAnswer(
-                        Task.JSON,
-                        industrialRobotCalibrationFile.copy(apiKey = apiKey, testData = newTestData),
-                        apiKey,
-                    ),
-                ).retrieve()
-                .body(AiDevsPoligonAnswerResponse::class.java)
-        println(answer)
+            apiClient.sendAnswer(
+                answerUrl,
+                AiDevsAnswer(
+                    Task.JSON,
+                    industrialRobotCalibrationFile.copy(apiKey = apiKey, testData = newTestData),
+                ),
+            )
+        ctx.terminal.writer().println(answer)
+        ctx.terminal.writer().flush()
     }
+
+    private fun fetchInputData(): IndustrialRobotCalibrationFile =
+        restClient
+            .get()
+            .uri(dataUrl, apiKey)
+            .retrieve()
+            .body(IndustrialRobotCalibrationFile::class.java) ?: throw IllegalStateException("Cannot get data to process")
 }

@@ -1,32 +1,22 @@
 package pl.bartek.aidevs.task2
 
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor
 import org.springframework.boot.ansi.AnsiOutput
 import org.springframework.boot.ansi.AnsiStyle
-import org.springframework.http.HttpStatusCode
-import org.springframework.http.client.BufferingClientHttpRequestFactory
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
-import pl.bartek.aidevs.LoggingRestClientInterceptor
 import pl.bartek.aidevs.isAiDevsFlag
 
 @Command(group = "task")
 class Task2Command(
+    @Value("\${aidevs.task.2.conversation-url}") private val conversationUrl: String,
     private val chatClient: ChatClient,
+    private val restClient: RestClient,
 ) {
-    private val restClient =
-        RestClient
-            .builder()
-            .requestFactory(BufferingClientHttpRequestFactory(SimpleClientHttpRequestFactory()))
-            .requestInterceptor(LoggingRestClientInterceptor())
-            .defaultStatusHandler(HttpStatusCode::isError) { _, _ -> }
-            .baseUrl(ROBOT_SYSTEM_URL)
-            .build()
-
     private var patrollingRobotConversation: PatrollingRobotConversation = PatrollingRobotConversation()
 
     @Command(command = ["task2"])
@@ -86,7 +76,7 @@ class Task2Command(
         val responseMessage =
             restClient
                 .post()
-                .uri("/verify")
+                .uri(conversationUrl)
                 .body(PatrollingRobotMessage(messageId = patrollingRobotConversation.messageId, text = message))
                 .retrieve()
                 .body<PatrollingRobotMessage>() ?: throw IllegalStateException("No response provided")
@@ -134,9 +124,5 @@ class Task2Command(
         ctx.terminal.writer().flush()
 
         return responseMessage.text
-    }
-
-    companion object {
-        private const val ROBOT_SYSTEM_URL = "NEXT COMMITS IN ENVS"
     }
 }

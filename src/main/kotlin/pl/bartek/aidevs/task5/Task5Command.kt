@@ -6,18 +6,24 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor
 import org.springframework.ai.ollama.OllamaChatModel
 import org.springframework.ai.ollama.api.OllamaApi
 import org.springframework.ai.ollama.api.OllamaOptions
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
-import pl.bartek.aidevs.poligon.AiDevsPoligonAnswer
-import pl.bartek.aidevs.poligon.AiDevsPoligonApiClient
-import pl.bartek.aidevs.poligon.Task
+import org.springframework.web.client.RestClient
+import pl.bartek.aidevs.courseapi.AiDevsAnswer
+import pl.bartek.aidevs.courseapi.AiDevsApiClient
+import pl.bartek.aidevs.courseapi.Task
 import java.util.stream.Collectors
 
 @Command(group = "task")
 class Task5Command(
-    private val apiClient: AiDevsPoligonApiClient,
+    private val apiClient: AiDevsApiClient,
+    private val restClient: RestClient,
     ollamaApi: OllamaApi,
     ollamaChatProperties: OllamaChatProperties,
+    @Value("\${aidevs.api-key}") private val apiKey: String,
+    @Value("\${aidevs.task.5.data-url}") private val dataUrl: String,
+    @Value("\${aidevs.task.5.answer-url}") private val answerUrl: String,
 ) {
     private val chatModel =
         OllamaChatModel(
@@ -35,7 +41,7 @@ class Task5Command(
 
     @Command(command = ["task5"])
     fun run(ctx: CommandContext) {
-        val toBeConsored = apiClient.fetchTask5Data()
+        val toBeConsored = fetchInputData()
 
         ctx.terminal.writer().println("Original text:\n$toBeConsored")
         ctx.terminal.writer().println()
@@ -89,11 +95,17 @@ class Task5Command(
         ctx.terminal.writer().println()
         ctx.terminal.writer().flush()
 
-        val answer =
-            apiClient.sendAnswer("NEXT COMMITS IN ENVS", AiDevsPoligonAnswer(Task.CENZURA, response))
+        val answer = apiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.CENZURA, response))
         ctx.terminal.writer().println()
         ctx.terminal.writer().println()
         ctx.terminal.writer().println("Centrala response:\n$answer")
         ctx.terminal.flush()
     }
+
+    private fun fetchInputData(): String =
+        restClient
+            .get()
+            .uri(dataUrl, apiKey)
+            .retrieve()
+            .body(String::class.java) ?: throw IllegalStateException("Cannot get data to process")
 }

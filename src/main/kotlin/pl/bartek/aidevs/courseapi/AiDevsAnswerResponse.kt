@@ -1,6 +1,6 @@
-package pl.bartek.aidevs.poligon
+package pl.bartek.aidevs.courseapi
 
-data class AiDevsPoligonAnswerResponse(
+data class AiDevsAnswerResponse(
     val code: Int,
     val message: String,
 ) {

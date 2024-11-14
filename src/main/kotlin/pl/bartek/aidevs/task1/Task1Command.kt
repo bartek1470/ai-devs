@@ -3,6 +3,7 @@ package pl.bartek.aidevs.task1
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor
 import org.springframework.boot.ansi.AnsiOutput
 import org.springframework.boot.ansi.AnsiStyle
@@ -13,16 +14,18 @@ import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
+import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.extractAiDevsFlag
+import pl.bartek.aidevs.minimalizedWholeText
 
 @Command(group = "task")
 class Task1Command(
     private val chatClient: ChatClient,
+    private val restClient: RestClient,
+    @Value("\${aidevs.task.1.robot-system.url}") private val robotSystemUrl: String,
+    @Value("\${aidevs.task.1.robot-system.username}") private val robotSystemUsername: String,
+    @Value("\${aidevs.task.1.robot-system.password}") private val robotSystemPassword: String,
 ) {
-    private val restClient =
-        RestClient
-            .builder()
-            .build()
-
     @Command(command = ["task1"])
     fun run(ctx: CommandContext) {
         val question = findQuestion(ctx)
@@ -34,14 +37,28 @@ class Task1Command(
                 redirect(
                     ResponseEntity
                         .status(200)
-                        .headers(HttpHeaders(LinkedMultiValueMap<String, String>().apply { add("location", "/firmware") }))
-                        .body(""),
+                        .headers(
+                            HttpHeaders(
+                                LinkedMultiValueMap<String, String>().apply {
+                                    add(
+                                        "location",
+                                        "/firmware",
+                                    )
+                                },
+                            ),
+                        ).body(""),
                     ctx,
                 )
             printFlag(answerPage, ctx)
         } else {
             ctx.terminal.writer().println(
-                AnsiOutput.toString(AnsiColor.RED, AnsiStyle.BOLD, "Failed to login", AnsiStyle.NORMAL, AnsiColor.DEFAULT),
+                AnsiOutput.toString(
+                    AnsiColor.RED,
+                    AnsiStyle.BOLD,
+                    "Failed to login",
+                    AnsiStyle.NORMAL,
+                    AnsiColor.DEFAULT,
+                ),
             )
             ctx.terminal.writer().flush()
         }
@@ -52,13 +69,20 @@ class Task1Command(
         ctx: CommandContext,
     ): Document {
         val location = response.headers["location"]?.first()!!
-        val newLink = "$ROBOT_SYSTEM_URL$location"
+        val newLink =
+            UriComponentsBuilder
+                .fromHttpUrl(robotSystemUrl)
+                .pathSegment(location)
+                .build()
+                .toUriString()
         ctx.terminal.writer().println("Successful answer. Redirecting to '$newLink'...")
         ctx.terminal.flush()
 
         val answerPage = Jsoup.connect(newLink).get()
         ctx.terminal.writer().println("Answer page:")
-        ctx.terminal.writer().println(answerPage.wholeText().replace("\\s{2,}".toRegex(), "\n").replace("^\\s+".toRegex(), ""))
+        ctx.terminal
+            .writer()
+            .println(answerPage.wholeText().replace("\\s{2,}".toRegex(), "\n").replace("^\\s+".toRegex(), ""))
         ctx.terminal.flush()
         return answerPage
     }
@@ -67,7 +91,7 @@ class Task1Command(
         answerPage: Document,
         ctx: CommandContext,
     ) {
-        val flag = "\\{\\{FLG:(.*)}}".toRegex().find(answerPage.wholeText())?.value
+        val flag = answerPage.wholeText().extractAiDevsFlag()
         ctx.terminal.writer().println("The flag is: $flag")
         ctx.terminal.flush()
     }
@@ -79,27 +103,28 @@ class Task1Command(
         val response =
             restClient
                 .post()
-                .uri(ROBOT_SYSTEM_URL)
+                .uri(robotSystemUrl)
                 .accept(MediaType.ALL)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(
                     LinkedMultiValueMap<String, String>().apply {
-                        add("username", "NEXT COMMITS IN ENVS")
-                        add("password", "NEXT COMMITS IN ENVS")
+                        add("username", robotSystemUsername)
+                        add("password", robotSystemPassword)
                         add("answer", answer)
                     },
                 ).retrieve()
                 .toEntity(String::class.java)
 
-        ctx.terminal.writer().println(response.statusCode)
-        ctx.terminal.writer().println(
-            response.headers
-                .toSingleValueMap()
-                .entries
-                .joinToString("\n"),
-        )
-        ctx.terminal.writer().println()
-        ctx.terminal.writer().println(response.body)
+        ctx.terminal.writer().println("Status: ${response.statusCode}")
+        val body =
+            if (response.headers.contentType?.isCompatibleWith(MediaType.TEXT_HTML) == true) {
+                Jsoup
+                    .parse(response.body!!)
+                    .minimalizedWholeText()
+            } else {
+                response.body!!
+            }
+        ctx.terminal.writer().println(body)
         ctx.terminal.flush()
         return response
     }
@@ -122,14 +147,10 @@ class Task1Command(
     }
 
     private fun findQuestion(ctx: CommandContext): String {
-        val robotSystemPage = Jsoup.connect(ROBOT_SYSTEM_URL).get()
+        val robotSystemPage = Jsoup.connect(robotSystemUrl).get()
         val question = robotSystemPage.select("#human-question").text()
         ctx.terminal.writer().println(question)
         ctx.terminal.flush()
         return question
-    }
-
-    companion object {
-        private const val ROBOT_SYSTEM_URL = "NEXT COMMITS IN ENVS"
     }
 }
