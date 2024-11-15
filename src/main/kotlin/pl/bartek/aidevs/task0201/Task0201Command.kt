@@ -12,6 +12,7 @@ import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.unzip
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.nameWithoutExtension
 
@@ -48,10 +49,10 @@ class Task0201Command(
 
     @Command(command = ["task0201"])
     fun run(ctx: CommandContext) {
-        fetchInputData()
+        val recordingsPath = fetchInputData()
     }
 
-    private fun fetchInputData() {
+    private fun fetchInputData(): Path {
         val uriComponents =
             UriComponentsBuilder
                 .fromHttpUrl(dataUrl)
@@ -61,7 +62,7 @@ class Task0201Command(
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)
         if (Files.exists(extractedZipPath)) {
             log.debug { "Input data already exists: ${extractedZipPath.toAbsolutePath()}" }
-            return
+            return extractedZipPath
         }
 
         val body =
@@ -76,6 +77,7 @@ class Task0201Command(
         }
         zipFilePath.unzip(extractedZipPath)
         Files.delete(zipFilePath)
+        return extractedZipPath
     }
 
     companion object {
