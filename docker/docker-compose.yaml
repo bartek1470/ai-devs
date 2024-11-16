@@ -7,7 +7,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ./entrypoint.sh:/entrypoint.sh
+      - ./ollama/entrypoint.sh:/entrypoint.sh
       - ollama:/root/.ollama
     deploy:
       resources:
