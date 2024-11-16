@@ -7,6 +7,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.openai.OpenAiAudioTranscriptionModel
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_BLACK
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_MAGENTA
@@ -165,6 +166,8 @@ class Task0201Command(
         file: Path,
         outputPath: Path,
     ) {
+        //TODO [bartek1470] second option -> OpenAiAudioTranscriptionModel - via OpenAI API
+
         try {
             log.info { "Transcribing $file" }
             val process =
