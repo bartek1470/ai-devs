@@ -14,6 +14,9 @@ import pl.bartek.aidevs.unzip
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.stream.Collectors
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 
 @Command(group = "task")
@@ -50,6 +53,56 @@ class Task0201Command(
     @Command(command = ["task0201"])
     fun run(ctx: CommandContext) {
         val recordingsPath = fetchInputData()
+        val recordings: List<String> =
+            Files
+                .list(recordingsPath)
+                .filter { it.extension == "m4a" }
+                .map { it.absolutePathString() }
+                .toList()
+        transcribe(recordingsPath, *recordings.toTypedArray())
+    }
+
+    private fun transcribe(
+        outputPath: Path,
+        vararg files: String,
+    ) {
+        val filenames = Files.list(outputPath).map { "${it.nameWithoutExtension}.txt" }.collect(Collectors.toSet())
+        if (files.none { !filenames.contains(it) }) {
+            log.info { "Transcriptions already exist" }
+            return
+        }
+
+        try {
+            log.info { "Processing $files" }
+            val process =
+                ProcessBuilder(
+                    "whisper",
+                    "--task",
+                    "transcribe",
+                    "--model",
+                    "medium",
+                    "--language",
+                    "Polish",
+                    "--output_format",
+                    "txt",
+                    "--output_dir",
+                    outputPath.toAbsolutePath().toString(),
+                    *files,
+                ).redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start()
+
+            val exitCode = process.waitFor()
+
+            if (exitCode == 0) {
+                log.debug { "Successfully processed $files" }
+            } else {
+                log.error { "Error processing $files with exit code $exitCode" }
+            }
+        } catch (e: Exception) {
+            log.error { "Failed to execute whisper command for $files: ${e.message}" }
+            throw e
+        }
     }
 
     private fun fetchInputData(): Path {
@@ -61,7 +114,7 @@ class Task0201Command(
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)
         if (Files.exists(extractedZipPath)) {
-            log.debug { "Input data already exists: ${extractedZipPath.toAbsolutePath()}" }
+            log.info { "Input data already exists: ${extractedZipPath.toAbsolutePath()}. Skipping" }
             return extractedZipPath
         }
 
