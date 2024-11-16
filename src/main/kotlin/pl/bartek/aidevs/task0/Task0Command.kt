@@ -11,7 +11,7 @@ import org.springframework.web.client.body
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
-import pl.bartek.aidevs.minimalizedWholeText
+import pl.bartek.aidevs.removeExtraWhitespaces
 
 @Command(group = "task")
 class Task0Command(
@@ -24,7 +24,7 @@ class Task0Command(
     fun run(ctx: CommandContext) {
         val data = fetchInputData()
         val response = apiClient.sendAnswerReceiveText(answerUrl, AiDevsAnswer(Task.POLIGON, data))
-        val text = Jsoup.parse(response).minimalizedWholeText()
+        val text = Jsoup.parse(response).wholeText().removeExtraWhitespaces()
         ctx.terminal.writer().println(text)
         ctx.terminal.writer().flush()
     }

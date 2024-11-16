@@ -16,7 +16,7 @@ import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.extractAiDevsFlag
-import pl.bartek.aidevs.minimalizedWholeText
+import pl.bartek.aidevs.removeExtraWhitespaces
 
 @Command(group = "task")
 class Task1Command(
@@ -120,7 +120,8 @@ class Task1Command(
             if (response.headers.contentType?.isCompatibleWith(MediaType.TEXT_HTML) == true) {
                 Jsoup
                     .parse(response.body!!)
-                    .minimalizedWholeText()
+                    .wholeText()
+                    .removeExtraWhitespaces()
             } else {
                 response.body!!
             }
