@@ -13,6 +13,7 @@ spring:
 aidevs:
   cache-dir: .cache/ai-devs/
   api-key: ${AIDEVS_APIKEY}
+  submit-flag-url: ${AIDEVS_SUBMITFLAGURL}
   task:
     0:
       data-url: ${AIDEVS_TASK_0_DATAURL}
