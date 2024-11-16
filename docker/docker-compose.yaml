@@ -1,9 +1,11 @@
+name: ai-devs
+
 services:
   ollama:
     image: ollama/ollama
     container_name: ollama
     # https://stackoverflow.com/a/78501628
-    entrypoint: "bash -c '/entrypoint.sh llama3.2:1b llama3.2:3b gemma2:2b llama2:7b'"
+    entrypoint: "bash -c '/entrypoint.sh llama3.2:1b llama3.2:3b gemma2:2b'"
     ports:
       - "11434:11434"
     volumes:
