@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.kotlin)
+    implementation(libs.jackson.dataformat.xml)
     implementation(libs.spring.ai.openai.starter)
     implementation(libs.spring.ai.ollama)
     implementation(libs.spring.shell.starter)

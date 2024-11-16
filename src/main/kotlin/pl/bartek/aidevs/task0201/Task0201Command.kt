@@ -1,24 +1,32 @@
-package pl.bartek.aidevs.task5
+package pl.bartek.aidevs.task0201
 
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.MapperFeature
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.ai.autoconfigure.ollama.OllamaChatProperties
 import org.springframework.ai.chat.client.ChatClient
-import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor
-import org.springframework.ai.ollama.OllamaChatModel
-import org.springframework.ai.ollama.api.OllamaApi
-import org.springframework.ai.ollama.api.OllamaOptions
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.ansi.AnsiColor.BRIGHT_BLACK
+import org.springframework.boot.ansi.AnsiColor.BRIGHT_MAGENTA
+import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.http.MediaType
 import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.ansiFormatted
+import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
-import pl.bartek.aidevs.task0201.Recording
+import pl.bartek.aidevs.courseapi.Task
+import pl.bartek.aidevs.removeExtraWhitespaces
+import pl.bartek.aidevs.titleCase
 import pl.bartek.aidevs.unzip
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.stream.Collectors
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 
@@ -26,9 +34,7 @@ import kotlin.io.path.nameWithoutExtension
 class Task0201Command(
     private val apiClient: AiDevsApiClient,
     private val restClient: RestClient,
-    ollamaApi: OllamaApi,
-    ollamaChatProperties: OllamaChatProperties,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
+    private val chatClient: ChatClient,
     @Value("\${aidevs.cache-dir}") cacheDir: String,
     @Value("\${aidevs.task.0201.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.0201.answer-url}") private val answerUrl: String,
@@ -39,20 +45,6 @@ class Task0201Command(
         Files.createDirectories(this.cacheDir)
     }
 
-    private val chatModel =
-        OllamaChatModel(
-            ollamaApi,
-            OllamaOptions
-                .fromOptions(ollamaChatProperties.options)
-                .withTemperature(.0),
-        )
-
-    private val chatClient =
-        ChatClient
-            .builder(chatModel)
-            .defaultAdvisors(SimpleLoggerAdvisor())
-            .build()
-
     @Command(command = ["task0201"])
     fun run(ctx: CommandContext) {
         val recordingsPath = fetchInputData()
@@ -62,6 +54,97 @@ class Task0201Command(
                 .filter { it.extension == "m4a" }
                 .toList()
         val recordings = transcribe(recordingsPath, *recordingPaths.toTypedArray())
+
+        val systemPrompt =
+            """
+            You are given transcript of different people recordings that have something in common with professor Andrzej Maj.
+            The transcripts are in Polish language.
+            Each recording is preceded with a name of the person and is divided with a new line before next recording, like below:
+            ```
+            Igor:
+            Myślę że tak jest.
+            
+            Patrycja:
+            To nie było tak.
+            ```
+            
+            You need to investigate those transcripts and detect a city, an university and a faculty where professor Maj was giving lectures.
+            During investigation keep in mind that person named Rafal had the closest relations with profesor Andrzej Maj, so most likely information from his transcript is the most genuine.
+            Transcripts can contain lies or misleading information about someone else which you need to ignore and focus only on information about profesor Andrzej Maj.
+            
+            After investigation, you need to think about a street name where the faculty of the university in the city is located.
+            Keep in mind that transcripts contain only clues about the street name and not an actual street name.
+            The name of the university or its faculty doesn't have to appear as a whole name, so you might concatenate some data to get the exact name of the faculty.
+            The street name of the faculty of the university in the city is common knowledge you should already know without transcripts.
+            Your output should have a form of below XML:
+            <result>
+                <city>the city</city>
+                <university>the university</university>
+                <faculty>the faculty</faculty>
+                <streetName>the street name</streetName>
+            </result>
+            
+            An example XML result:
+            <result>
+                <city>Tokio</city>
+                <university>Politechnika Bartosza</university>
+                <faculty>Wydział Biologiczny</faculty>
+                <streetName>Wesoła</streetName>
+            </result>
+            
+            The output can't contain anything other than XML. Skip any markdown formatting
+            """.trimIndent()
+
+        val recordingsWithName =
+            recordings.map { recording ->
+                val name = recording.transcriptPath.nameWithoutExtension.titleCase()
+                """
+            |$name:
+            |${recording.transcript.removeExtraWhitespaces()}
+                """.trimMargin()
+            }
+        val userPrompt =
+            """
+            |${recordingsWithName.joinToString("\n\n")}
+            """.trimMargin()
+
+        ctx.terminal.writer().println("System prompt:".ansiFormatted(color = BRIGHT_BLACK, style = BOLD))
+        ctx.terminal.writer().println(systemPrompt.ansiFormatted(color = BRIGHT_BLACK))
+        ctx.terminal.writer().println("User prompt:".ansiFormatted(color = BRIGHT_BLACK, style = BOLD))
+        ctx.terminal.writer().println(userPrompt.ansiFormatted(color = BRIGHT_BLACK))
+        ctx.terminal.writer().print("AI: ".ansiFormatted(color = BRIGHT_MAGENTA, style = BOLD))
+        ctx.terminal.flush()
+        val response =
+            chatClient
+                .prompt()
+                .system(systemPrompt)
+                .user(userPrompt)
+                .stream()
+                .content()
+                .doOnNext {
+                    ctx.terminal.writer().print(it)
+                    ctx.terminal.flush()
+                }.collect(Collectors.joining(""))
+                .block() ?: throw IllegalStateException("Cannot get chat response")
+
+        ctx.terminal.writer().println()
+        ctx.terminal.flush()
+
+        val xml =
+            response.substring(response.indexOf("<result>"), response.indexOf("</result>") + "</result>".length)
+        val xmlMapper: ObjectMapper =
+            XmlMapper
+                .builder()
+                .defaultUseWrapper(false)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
+                .build()
+                .registerKotlinModule()
+
+        val parsedXml = xmlMapper.readValue(xml, AiResponse::class.java)
+        val aiDevsAnswerResponse = apiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.MP3, parsedXml.streetName))
+        ctx.terminal.writer().println(aiDevsAnswerResponse)
+        ctx.terminal.writer().flush()
     }
 
     private fun transcribe(

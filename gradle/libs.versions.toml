@@ -11,6 +11,7 @@ spring-shell = "3.3.3"
 jsoup = "1.18.1"
 
 [libraries]
+jackson-dataformat-xml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-xml" }
 jackson-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 junit-platformLauncher = { group = "org.junit.platform", name = "junit-platform-launcher" }
@@ -18,8 +19,8 @@ kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", versi
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect" }
 kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit5" }
 spring-ai-bom = { group = "org.springframework.ai", name = "spring-ai-bom", version.ref = "spring-ai" }
-spring-ai-openai-starter = { group = "org.springframework.ai", name = "spring-ai-openai-spring-boot-starter" }
 spring-ai-ollama = { group = "org.springframework.ai", name = "spring-ai-ollama" }
+spring-ai-openai-starter = { group = "org.springframework.ai", name = "spring-ai-openai-spring-boot-starter" }
 spring-boot-devtools = { group = "org.springframework.boot", name = "spring-boot-devtools" }
 spring-boot-test-starter = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
 spring-shell-bom = { group = "org.springframework.shell", name = "spring-shell-dependencies", version.ref = "spring-shell" }
