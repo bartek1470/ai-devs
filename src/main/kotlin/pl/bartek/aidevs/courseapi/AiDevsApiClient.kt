@@ -65,35 +65,4 @@ class AiDevsApiClient(
         return responseSpec.body()
             ?: throw IllegalStateException("Missing response body")
     }
-
-    fun sendFlag(
-        flag: String,
-        terminal: Terminal,
-    ): AiDevsAnswerResponse {
-        if (Files.notExists(cookie)) {
-            terminal.writer().print("Enter value of PHPSESSID cookie ( ('; '+document.cookie).split(`; PHPSESSID=`).pop().split(';')[0] ): ".ansiFormatted(color = YELLOW))
-            terminal.writer().flush()
-            val cookieVal = Scanner(System.`in`).next()!!
-            Files.write(cookie, cookieVal.toByteArray())
-        }
-        val key = Files.readString(cookie)
-        val responseSpec =
-            restClient
-                .post()
-                .uri(submitFlagUrl)
-                .contentType(APPLICATION_FORM_URLENCODED)
-                .headers { headers ->
-                    headers.add(COOKIE, "PHPSESSID=$key")
-                }.body(
-                    LinkedMultiValueMap<String, String>().apply {
-                        add("key", key)
-                        add("flag", flag)
-                    },
-                ).retrieve()
-
-        val body = responseSpec.body<String>()!!
-        val response = objectMapper.readValue(body, AiDevsAnswerResponse::class.java)
-
-        return response
-    }
 }
