@@ -2,7 +2,11 @@ package pl.bartek.aidevs.task5
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.ai.autoconfigure.ollama.OllamaChatProperties
+import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor
+import org.springframework.ai.ollama.OllamaChatModel
 import org.springframework.ai.ollama.api.OllamaApi
+import org.springframework.ai.ollama.api.OllamaOptions
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
 import org.springframework.shell.command.CommandContext
@@ -10,12 +14,11 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
+import pl.bartek.aidevs.task0201.Recording
 import pl.bartek.aidevs.unzip
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.stream.Collectors
-import kotlin.io.path.absolutePathString
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 
@@ -36,44 +39,51 @@ class Task0201Command(
         Files.createDirectories(this.cacheDir)
     }
 
-//    private val chatModel =
-//        OllamaChatModel(
-//            ollamaApi,
-//            OllamaOptions
-//                .fromOptions(ollamaChatProperties.options)
-//                .withTemperature(.0),
-//        )
-//
-//    private val chatClient =
-//        ChatClient
-//            .builder(chatModel)
-//            .defaultAdvisors(SimpleLoggerAdvisor())
-//            .build()
+    private val chatModel =
+        OllamaChatModel(
+            ollamaApi,
+            OllamaOptions
+                .fromOptions(ollamaChatProperties.options)
+                .withTemperature(.0),
+        )
+
+    private val chatClient =
+        ChatClient
+            .builder(chatModel)
+            .defaultAdvisors(SimpleLoggerAdvisor())
+            .build()
 
     @Command(command = ["task0201"])
     fun run(ctx: CommandContext) {
         val recordingsPath = fetchInputData()
-        val recordings: List<String> =
+        val recordingPaths: List<Path> =
             Files
                 .list(recordingsPath)
                 .filter { it.extension == "m4a" }
-                .map { it.absolutePathString() }
                 .toList()
-        transcribe(recordingsPath, *recordings.toTypedArray())
+        val recordings = transcribe(recordingsPath, *recordingPaths.toTypedArray())
     }
 
     private fun transcribe(
         outputPath: Path,
-        vararg files: String,
-    ) {
-        val filenames = Files.list(outputPath).map { "${it.nameWithoutExtension}.txt" }.collect(Collectors.toSet())
-        if (files.none { !filenames.contains(it) }) {
-            log.info { "Transcriptions already exist" }
-            return
+        vararg files: Path,
+    ): List<Recording> =
+        files.map { recordingPath ->
+            val transcriptPath = outputPath.resolve("${recordingPath.nameWithoutExtension}.txt")
+
+            if (Files.notExists(transcriptPath)) {
+                createTranscript(transcriptPath, outputPath)
+            }
+            val transcript = Files.readString(transcriptPath)
+            Recording(recordingPath, transcriptPath, transcript)
         }
 
+    private fun createTranscript(
+        file: Path,
+        outputPath: Path,
+    ) {
         try {
-            log.info { "Processing $files" }
+            log.info { "Transcribing $file" }
             val process =
                 ProcessBuilder(
                     "whisper",
@@ -87,21 +97,19 @@ class Task0201Command(
                     "txt",
                     "--output_dir",
                     outputPath.toAbsolutePath().toString(),
-                    *files,
-                ).redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .start()
+                    file.toAbsolutePath().toString(),
+                ).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT).start()
 
             val exitCode = process.waitFor()
 
             if (exitCode == 0) {
-                log.debug { "Successfully processed $files" }
+                log.debug { "Successfully processed $file" }
             } else {
-                log.error { "Error processing $files with exit code $exitCode" }
+                log.error { "Error processing $file with exit code $exitCode" }
             }
         } catch (e: Exception) {
-            log.error { "Failed to execute whisper command for $files: ${e.message}" }
-            throw e
+            log.error(e) { "Failed to execute whisper command for $file" }
+            throw IllegalStateException("Failed to transcribe: $file", e)
         }
     }
 
