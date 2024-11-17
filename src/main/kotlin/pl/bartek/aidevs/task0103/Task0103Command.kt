@@ -1,19 +1,21 @@
 package pl.bartek.aidevs.task0103
 
+import org.jline.terminal.Terminal
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
+import pl.bartek.aidevs.println
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0103Command(
+    private val terminal: Terminal,
     @Value("\${aidevs.api-key}") private val apiKey: String,
     @Value("\${aidevs.task.3.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.3.answer-url}") private val answerUrl: String,
@@ -23,8 +25,11 @@ class Task0103Command(
 ) {
     private val chatClient = aiModelVendor.defaultChatClient()
 
-    @Command(command = ["0103"])
-    fun run(ctx: CommandContext) {
+    @Command(
+        command = ["0103"],
+        description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s01e03-limity-duzych-modeli-jezykowych-i-api",
+    )
+    fun run() {
         val industrialRobotCalibrationFile = fetchInputData()
         val newTestData =
             industrialRobotCalibrationFile.testData.map { testDataItem ->
@@ -37,15 +42,15 @@ class Task0103Command(
 
                 val testQuestion =
                     testDataItem.test?.let {
-                        ctx.terminal.writer().println(it.question)
-                        ctx.terminal.writer().flush()
+                        terminal.println(it.question)
+                        terminal.flush()
                         val response =
                             chatClient
                                 .prompt(it.question)
                                 .call()
                                 .content() ?: throw IllegalStateException("Cannot get answer")
-                        ctx.terminal.writer().println(response)
-                        ctx.terminal.writer().flush()
+                        terminal.println(response)
+                        terminal.flush()
 
                         TestQuestion(it.question, response)
                     }
@@ -61,8 +66,7 @@ class Task0103Command(
                     industrialRobotCalibrationFile.copy(apiKey = apiKey, testData = newTestData),
                 ),
             )
-        ctx.terminal.writer().println(answer)
-        ctx.terminal.writer().flush()
+        terminal.println(answer)
     }
 
     private fun fetchInputData(): IndustrialRobotCalibrationFile =

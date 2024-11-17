@@ -3,26 +3,33 @@ package pl.bartek.aidevs.task0104
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.ansiFormattedError
+import pl.bartek.aidevs.ansiFormattedSuccess
+import pl.bartek.aidevs.println
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0104Command(
+    private val terminal: Terminal,
     @Value("\${aidevs.task.4.answer-url}") private val answerUrl: String,
     @Value("\${aidevs.task.4.file-base-url}") private val fileBaseUrl: String,
     private val restClient: RestClient,
 ) {
-    @Command(command = ["0104"])
-    fun run(ctx: CommandContext) {
+    @Command(
+        command = ["0104"],
+        description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s01e04-techniki-optymalizacji",
+    )
+    fun run() {
         val request =
             """|Map:
                |p X p p p p
@@ -40,9 +47,8 @@ class Task0104Command(
                |7. Return a found path in a format `<RESULT>{"steps": "UP, LEFT, RIGHT, DOWN"}</RESULT>`
             """.trimMargin()
 
-        ctx.terminal.writer().println(request)
-        ctx.terminal.writer().println()
-        ctx.terminal.writer().flush()
+        terminal.println(request)
+        terminal.println()
 
         val response =
             restClient
@@ -66,17 +72,21 @@ class Task0104Command(
             message?.substringAfter("<")?.let {
                 Jsoup.parse("<$it").wholeText()
             }
-        val filename = value["filename"]
+        val filename = value["filename"]!!.textValue()
         val fileUrl =
             UriComponentsBuilder
                 .fromHttpUrl(fileBaseUrl)
-                .pathSegment(filename.textValue())
+                .pathSegment(filename)
                 .build()
                 .toUriString()
 
-        ctx.terminal.writer().println("Steps: ${value["steps"].textValue()}")
-        ctx.terminal.writer().println("Message: $parsedMessage")
-        ctx.terminal.writer().println("File to download: $fileUrl")
-        ctx.terminal.writer().flush()
+        terminal.println("Steps: ${value["steps"].textValue()}")
+
+        if (parsedMessage == null || filename == "whatever.zip") {
+            terminal.println("Wrong answer".ansiFormattedError())
+        } else {
+            terminal.println("Message: $parsedMessage".ansiFormattedSuccess())
+            terminal.println("File to download: $fileUrl".ansiFormattedSuccess())
+        }
     }
 }

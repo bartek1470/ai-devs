@@ -1,45 +1,46 @@
 package pl.bartek.aidevs.task0102
 
+import org.jline.terminal.Terminal
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.ansi.AnsiColor
-import org.springframework.boot.ansi.AnsiOutput
-import org.springframework.boot.ansi.AnsiStyle
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
 import pl.bartek.aidevs.AiModelVendor
+import pl.bartek.aidevs.ansiFormattedAi
+import pl.bartek.aidevs.ansiFormattedError
+import pl.bartek.aidevs.ansiFormattedHuman
+import pl.bartek.aidevs.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.ansiFormattedSuccess
 import pl.bartek.aidevs.isAiDevsFlag
+import pl.bartek.aidevs.print
+import pl.bartek.aidevs.println
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0102Command(
+    private val terminal: Terminal,
     @Value("\${aidevs.task.2.conversation-url}") private val conversationUrl: String,
     aiModelVendor: AiModelVendor,
     private val restClient: RestClient,
 ) {
-
     private val chatClient = aiModelVendor.defaultChatClient()
     private var patrollingRobotConversation: PatrollingRobotConversation = PatrollingRobotConversation()
 
-    @Command(command = ["0102"])
-    fun run(ctx: CommandContext) {
+    @Command(
+        command = ["0102"],
+        description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s01e02-przygotowanie-wlasnych-danych-dla-modelu",
+    )
+    fun run() {
         patrollingRobotConversation = PatrollingRobotConversation()
-        val robotQuestion = say("READY", ctx)
+        val robotQuestion = say("READY")
         val answer = generateAnswer(robotQuestion)
-        val response = say(answer, ctx)
+        val response = say(answer)
         if (!response.isAiDevsFlag()) {
-            ctx.terminal.writer().println(
-                AnsiOutput.toString(AnsiColor.RED, AnsiStyle.BOLD, "Autoryzacja nieudana", AnsiStyle.NORMAL, AnsiColor.DEFAULT),
-            )
-            ctx.terminal.writer().flush()
+            terminal.println("Autoryzacja nieudana".ansiFormattedError())
         } else {
-            ctx.terminal.writer().println(
-                AnsiOutput.toString(AnsiColor.GREEN, AnsiStyle.BOLD, "Pomyślna autoryzacja", AnsiStyle.NORMAL, AnsiColor.DEFAULT),
-            )
-            ctx.terminal.writer().flush()
+            terminal.println("Pomyślna autoryzacja".ansiFormattedSuccess())
         }
     }
 
@@ -68,15 +69,10 @@ class Task0102Command(
         return content.trim()
     }
 
-    private fun say(
-        message: String,
-        ctx: CommandContext,
-    ): String {
+    private fun say(message: String): String {
         patrollingRobotConversation.messages.add(message)
-        ctx.terminal.writer().println(
-            AnsiOutput.toString(AnsiColor.CYAN, AnsiStyle.BOLD, "ISTOTA: ", AnsiStyle.NORMAL, AnsiColor.DEFAULT, message),
-        )
-        ctx.terminal.writer().flush()
+        terminal.print("ISTOTA: ".ansiFormattedHuman())
+        terminal.println(message)
 
         val responseMessage =
             restClient
@@ -87,46 +83,20 @@ class Task0102Command(
                 .body<PatrollingRobotMessage>() ?: throw IllegalStateException("No response provided")
 
         if (responseMessage.code != null) {
-            ctx.terminal.writer().println(
-                AnsiOutput.toString(
-                    AnsiColor.BRIGHT_MAGENTA,
-                    AnsiStyle.BOLD,
-                    "ROBOT: ",
-                    AnsiColor.RED,
-                    "Kod ${responseMessage.code}. ${responseMessage.message}",
-                    AnsiStyle.NORMAL,
-                    AnsiColor.DEFAULT,
-                ),
-            )
-            ctx.terminal.writer().flush()
+            terminal.print("ROBOT: ".ansiFormattedAi())
+            terminal.println("Kod ${responseMessage.code}. ${responseMessage.message}".ansiFormattedError())
             throw IllegalStateException(
                 "Communication failed. Code from response: ${responseMessage.code}, message: '${responseMessage.message}'",
             )
         }
 
         if (!patrollingRobotConversation.hasStarted()) {
-            ctx.terminal.writer().println(
-                AnsiOutput.toString(
-                    AnsiColor.BRIGHT_BLACK,
-                    "(Message id: ${patrollingRobotConversation.messageId})",
-                    AnsiStyle.NORMAL,
-                    AnsiColor.DEFAULT,
-                ),
-            )
+            terminal.println("(Message id: ${patrollingRobotConversation.messageId})".ansiFormattedSecondaryInfo())
             patrollingRobotConversation.messageId = responseMessage.messageId!!
         }
         patrollingRobotConversation.messages.add(responseMessage.text!!)
-        ctx.terminal.writer().println(
-            AnsiOutput.toString(
-                AnsiColor.BRIGHT_MAGENTA,
-                AnsiStyle.BOLD,
-                "ROBOT: ",
-                AnsiStyle.NORMAL,
-                AnsiColor.DEFAULT,
-                responseMessage.text,
-            ),
-        )
-        ctx.terminal.writer().flush()
+        terminal.print("ROBOT: ".ansiFormattedAi())
+        terminal.println(responseMessage.text)
 
         return responseMessage.text
     }

@@ -6,24 +6,22 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.ai.chat.client.ChatClient
-import org.springframework.ai.chat.messages.SystemMessage
-import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.chat.prompt.Prompt
+import org.jline.terminal.Terminal
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.ansi.AnsiColor.BRIGHT_BLACK
-import org.springframework.boot.ansi.AnsiColor.BRIGHT_MAGENTA
-import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.http.MediaType
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.ansiFormatted
+import pl.bartek.aidevs.ansiFormattedAi
+import pl.bartek.aidevs.ansiFormattedError
+import pl.bartek.aidevs.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.ansiFormattedSecondaryInfoTitle
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
+import pl.bartek.aidevs.print
+import pl.bartek.aidevs.println
 import pl.bartek.aidevs.removeExtraWhitespaces
 import pl.bartek.aidevs.titleCase
 import pl.bartek.aidevs.unzip
@@ -36,9 +34,10 @@ import kotlin.io.path.nameWithoutExtension
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0201Command(
+    private val terminal: Terminal,
     @Value("\${aidevs.cache-dir}") cacheDir: String,
     @Value("\${aidevs.task.0201.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.0201.answer-url}") private val answerUrl: String,
@@ -53,8 +52,11 @@ class Task0201Command(
         Files.createDirectories(this.cacheDir)
     }
 
-    @Command(command = ["0201"])
-    fun run(ctx: CommandContext) {
+    @Command(
+        command = ["0201"],
+        description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s02e01-audio-i-interfejs-glosowy",
+    )
+    fun run() {
         val recordingsPath = fetchInputData()
         val recordingPaths: List<Path> =
             Files
@@ -107,8 +109,8 @@ class Task0201Command(
             recordings.map { recording ->
                 val name = recording.transcriptPath.nameWithoutExtension.titleCase()
                 """
-            |$name:
-            |${recording.transcript.removeExtraWhitespaces()}
+                |$name:
+                |${recording.transcript.removeExtraWhitespaces()}
                 """.trimMargin()
             }
         val userPrompt =
@@ -116,12 +118,11 @@ class Task0201Command(
             |${recordingsWithName.joinToString("\n\n")}
             """.trimMargin()
 
-        ctx.terminal.writer().println("System prompt:".ansiFormatted(color = BRIGHT_BLACK, style = BOLD))
-        ctx.terminal.writer().println(systemPrompt.ansiFormatted(color = BRIGHT_BLACK))
-        ctx.terminal.writer().println("User prompt:".ansiFormatted(color = BRIGHT_BLACK, style = BOLD))
-        ctx.terminal.writer().println(userPrompt.ansiFormatted(color = BRIGHT_BLACK))
-        ctx.terminal.writer().print("AI: ".ansiFormatted(color = BRIGHT_MAGENTA, style = BOLD))
-        ctx.terminal.flush()
+        terminal.println("System prompt:".ansiFormattedSecondaryInfoTitle())
+        terminal.println(systemPrompt.ansiFormattedSecondaryInfo())
+        terminal.println("User prompt:".ansiFormattedSecondaryInfoTitle())
+        terminal.println(userPrompt.ansiFormattedSecondaryInfo())
+        terminal.print("AI: ".ansiFormattedAi())
         val response =
             chatClient
                 .prompt()
@@ -129,15 +130,25 @@ class Task0201Command(
                 .user(userPrompt)
                 .stream()
                 .content()
-                .doOnNext {
-                    ctx.terminal.writer().print(it)
-                    ctx.terminal.flush()
-                }.collect(Collectors.joining(""))
+                .doOnNext { terminal.print(it) }
+                .collect(Collectors.joining(""))
                 .block() ?: throw IllegalStateException("Cannot get chat response")
 
-        ctx.terminal.writer().println()
-        ctx.terminal.flush()
+        terminal.println()
 
+        val aiResponse = extractAnswer(response)
+        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.MP3, aiResponse.streetName))
+        terminal.println(aiDevsAnswerResponse)
+    }
+
+    private fun extractAnswer(response: String): AiResponse {
+        val responseStartIndex = response.indexOf("<result>")
+        val responseEndTag = "</result>"
+        val responseEndIndex = response.indexOf(responseEndTag)
+        if (responseStartIndex < 0 || responseEndIndex < 0 || responseStartIndex < responseEndIndex) {
+            terminal.println("Final AI answer not found".ansiFormattedError())
+            throw IllegalStateException("Final AI answer not found")
+        }
         val xml =
             response.substring(response.indexOf("<result>"), response.indexOf("</result>") + "</result>".length)
         val xmlMapper: ObjectMapper =
@@ -149,10 +160,7 @@ class Task0201Command(
                 .build()
                 .registerKotlinModule()
 
-        val parsedXml = xmlMapper.readValue(xml, AiResponse::class.java)
-        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.MP3, parsedXml.streetName))
-        ctx.terminal.writer().println(aiDevsAnswerResponse)
-        ctx.terminal.writer().flush()
+        return xmlMapper.readValue(xml, AiResponse::class.java)
     }
 
     private fun transcribe(

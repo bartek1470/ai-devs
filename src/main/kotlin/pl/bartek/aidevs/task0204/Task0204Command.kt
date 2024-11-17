@@ -15,20 +15,19 @@ import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
 import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.ansi.AnsiColor.BRIGHT_MAGENTA
-import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
 import org.springframework.http.MediaType.IMAGE_PNG_VALUE
 import org.springframework.http.MediaType.TEXT_PLAIN_VALUE
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.ansiFormatted
+import pl.bartek.aidevs.ansiFormattedAi
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
+import pl.bartek.aidevs.print
+import pl.bartek.aidevs.println
 import pl.bartek.aidevs.task0201.Recording
 import pl.bartek.aidevs.unzip
 import java.nio.file.Files
@@ -41,17 +40,18 @@ import kotlin.io.path.nameWithoutExtension
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0204Command(
+    private val terminal: Terminal,
+    @Value("\${aidevs.cache-dir}") cacheDir: String,
+    @Value("\${aidevs.task.0204.data-url}") private val dataUrl: String,
+    @Value("\${aidevs.task.0204.answer-url}") private val answerUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     openAiChatModel: OpenAiChatModel,
     ollamaChatModel: OllamaChatModel,
     aiModelVendor: AiModelVendor,
-    @Value("\${aidevs.cache-dir}") cacheDir: String,
-    @Value("\${aidevs.task.0204.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0204.answer-url}") private val answerUrl: String,
 ) {
     private val cacheDir = Paths.get(cacheDir, "02_04")
 
@@ -91,8 +91,11 @@ class Task0204Command(
         Files.createDirectories(this.cacheDir)
     }
 
-    @Command(command = ["0204"])
-    fun run(ctx: CommandContext) {
+    @Command(
+        command = ["0204"],
+        description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s02e04-polaczenie-wielu-formatow",
+    )
+    fun run() {
         val factoryDataPath = fetchInputData()
         val resourcesToProcess =
             Files
@@ -113,56 +116,33 @@ class Task0204Command(
                     TEXT_PLAIN_VALUE ->
                         listOf()
 //                        entry.value.map {
-//                            ctx.terminal.writer().println(
-//                                "AI response to ${it.filename}:".ansiFormatted(
-//                                    style = BOLD,
-//                                    color = BRIGHT_MAGENTA,
-//                                ),
-//                            )
-//                            ctx.terminal.writer().flush()
-//                            processText(it, ctx.terminal)
-//                            ctx.terminal.writer().println()
-//                            ctx.terminal.writer().println()
-//                            ctx.terminal.writer().flush()
+//                            terminal.println("AI response to ${it.filename}:".ansiFormattedAi())
+//                            processText(it)
+//                            terminal.println()
+//                            terminal.println()
 //                        }
                     "audio" ->
                         listOf()
 //                        entry.value.map {
-//                            ctx.terminal.writer().println(
-//                                "AI response to ${it.filename}:".ansiFormatted(
-//                                    style = BOLD,
-//                                    color = BRIGHT_MAGENTA,
-//                                ),
-//                            )
-//                            ctx.terminal.writer().flush()
-//                            processAudio(it, ctx.terminal)
-//                            ctx.terminal.writer().println()
-//                            ctx.terminal.writer().println()
-//                            ctx.terminal.writer().flush()
+//                            terminal.println("AI response to ${it.filename}:".ansiFormattedAi())
+//                            processAudio(it)
+//                            terminal.println()
+//                            terminal.println()
+//
 //                        }
                     IMAGE_PNG_VALUE ->
                         entry.value.map {
-                            ctx.terminal.writer().println(
-                                "AI response to ${it.filename}:".ansiFormatted(
-                                    style = BOLD,
-                                    color = BRIGHT_MAGENTA,
-                                ),
-                            )
-                            ctx.terminal.writer().flush()
-                            processImage(it, ctx.terminal)
-                            ctx.terminal.writer().println()
-                            ctx.terminal.writer().println()
-                            ctx.terminal.writer().flush()
+                            terminal.println("AI response to ${it.filename}:".ansiFormattedAi())
+                            processImage(it)
+                            terminal.println()
+                            terminal.println()
                         }
                     else -> throw UnsupportedOperationException("Invalid file type ${entry.key}")
                 }
             }
     }
 
-    private fun processImage(
-        imageResource: Resource,
-        terminal: Terminal,
-    ): String =
+    private fun processImage(imageResource: Resource): String =
         chatClient
             .prompt(
                 Prompt(
@@ -186,15 +166,11 @@ class Task0204Command(
             ).stream()
             .content()
             .doOnNext {
-                terminal.writer().print(it)
-                terminal.flush()
+                terminal.print(it)
             }.collect(Collectors.joining(""))
             .block() ?: throw IllegalStateException("Cannot get chat response")
 
-    private fun processAudio(
-        audioResource: Resource,
-        terminal: Terminal,
-    ): String =
+    private fun processAudio(audioResource: Resource): String =
         chatClient
             .prompt(
                 Prompt(
@@ -217,16 +193,11 @@ class Task0204Command(
                 ),
             ).stream()
             .content()
-            .doOnNext {
-                terminal.writer().print(it)
-                terminal.flush()
-            }.collect(Collectors.joining(""))
+            .doOnNext { terminal.print(it) }
+            .collect(Collectors.joining(""))
             .block() ?: throw IllegalStateException("Cannot get chat response")
 
-    private fun processText(
-        textResource: Resource,
-        terminal: Terminal,
-    ): String =
+    private fun processText(textResource: Resource): String =
         chatClient
             .prompt(
                 Prompt(
@@ -249,10 +220,8 @@ class Task0204Command(
                 ),
             ).stream()
             .content()
-            .doOnNext {
-                terminal.writer().print(it)
-                terminal.flush()
-            }.collect(Collectors.joining(""))
+            .doOnNext { terminal.print(it) }
+            .collect(Collectors.joining(""))
             .block() ?: throw IllegalStateException("Cannot get chat response")
 
     private fun mapToResourceWithType(file: Path): Stream<Pair<String, Resource>> =
@@ -266,7 +235,6 @@ class Task0204Command(
     private fun prepareContent(
         file: Path,
         factoryDataPath: Path,
-        ctx: CommandContext,
     ): Stream<NoteContent> =
         when (file.extension) {
             "txt" -> Stream.of(NoteContent(file, Files.readString(file)))
@@ -281,18 +249,12 @@ class Task0204Command(
                 Stream.of(NoteContent(file, content))
             }
 
-            "png" -> Stream.of(NoteContent(file, describeImage(file, ctx.terminal)))
+            "png" -> Stream.of(NoteContent(file, describeImage(file)))
             else -> Stream.empty()
         }
 
-    private fun describeImage(
-        imagePath: Path,
-        terminal: Terminal,
-    ): String {
-        terminal
-            .writer()
-            .println("AI response to $imagePath:".ansiFormatted(style = BOLD, color = BRIGHT_MAGENTA))
-        terminal.writer().flush()
+    private fun describeImage(imagePath: Path): String {
+        terminal.println("AI response to $imagePath:".ansiFormattedAi())
         return chatClient
             .prompt(
                 Prompt(
@@ -308,10 +270,8 @@ class Task0204Command(
                 ),
             ).stream()
             .content()
-            .doOnNext {
-                terminal.writer().print(it)
-                terminal.flush()
-            }.collect(Collectors.joining(""))
+            .doOnNext { terminal.print(it) }
+            .collect(Collectors.joining(""))
             .block() ?: throw IllegalStateException("Cannot get chat response")
     }
 

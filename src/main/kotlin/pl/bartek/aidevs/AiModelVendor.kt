@@ -26,12 +26,4 @@ class AiModelVendor(
             .defaultAdvisors(SimpleLoggerAdvisor())
             .build()
     }
-
-    fun defaultChatOptions(): ChatClient {
-        val chatModel: ChatModel = if (isOllamaPreferred()) ollamaChatModel else openAiChatModel
-        return ChatClient
-            .builder(chatModel)
-            .defaultAdvisors(SimpleLoggerAdvisor())
-            .build()
-    }
 }

@@ -1,25 +1,30 @@
 package pl.bartek.aidevs.task0105
 
+import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.AiModelVendor
+import pl.bartek.aidevs.ansiFormattedAi
+import pl.bartek.aidevs.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
+import pl.bartek.aidevs.print
+import pl.bartek.aidevs.println
 import java.util.stream.Collectors
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0105Command(
+    private val terminal: Terminal,
     @Value("\${aidevs.api-key}") private val apiKey: String,
     @Value("\${aidevs.task.5.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.5.answer-url}") private val answerUrl: String,
@@ -34,14 +39,13 @@ class Task0105Command(
             .withTemperature(.0)
             .build()
 
-    @Command(command = ["0105"])
-    fun run(ctx: CommandContext) {
+    @Command(command = ["0105"], description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s01e05-produkcja")
+    fun run() {
         val toBeConsored = fetchInputData()
 
-        ctx.terminal.writer().println("Original text:\n$toBeConsored")
-        ctx.terminal.writer().println()
-        ctx.terminal.writer().println("AI response:")
-        ctx.terminal.flush()
+        terminal.println("Original text:\n$toBeConsored".ansiFormattedSecondaryInfo())
+        terminal.println()
+        terminal.println("AI response:".ansiFormattedAi())
 
         val response =
             chatClient
@@ -89,19 +93,16 @@ class Task0105Command(
                 ).stream()
                 .content()
                 .doOnNext {
-                    ctx.terminal.writer().print(it)
-                    ctx.terminal.flush()
+                    terminal.print(it)
                 }.collect(Collectors.joining(""))
                 .block() ?: throw IllegalStateException("Cannot get chat response")
 
-        ctx.terminal.writer().println()
-        ctx.terminal.writer().flush()
+        terminal.println()
 
         val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.CENZURA, response))
-        ctx.terminal.writer().println()
-        ctx.terminal.writer().println()
-        ctx.terminal.writer().println("Centrala response:\n$answer")
-        ctx.terminal.flush()
+        terminal.println()
+        terminal.println()
+        terminal.println(answer)
     }
 
     private fun fetchInputData(): String =

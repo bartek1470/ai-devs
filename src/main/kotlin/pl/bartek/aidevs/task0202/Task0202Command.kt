@@ -1,31 +1,48 @@
 package pl.bartek.aidevs.task0202
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jline.terminal.Terminal
+import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.model.Media
+import org.springframework.ai.ollama.api.OllamaModel
+import org.springframework.ai.ollama.api.OllamaOptions
+import org.springframework.ai.openai.OpenAiChatOptions
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.ansi.AnsiColor.BRIGHT_GREEN
-import org.springframework.boot.ansi.AnsiColor.BRIGHT_MAGENTA
+import org.springframework.boot.ansi.AnsiColor.YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.ansiFormatted
+import pl.bartek.aidevs.ansiFormattedAi
+import pl.bartek.aidevs.print
+import pl.bartek.aidevs.println
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0202Command(
+    private val terminal: Terminal,
     @Value("\${aidevs.cache-dir}") cacheDir: String,
     aiModelVendor: AiModelVendor,
 ) {
     private val cacheDir = Paths.get(cacheDir, "02_02")
     private val chatClient = aiModelVendor.defaultChatClient()
+    private val imageChatOptions =
+        if (aiModelVendor.isOllamaPreferred()) {
+            OllamaOptions
+                .builder()
+                .withModel("llava:7b")
+                .build()
+        } else {
+            OpenAiChatOptions.builder().build()
+        }
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -33,43 +50,44 @@ class Task0202Command(
         // those are manually cropped from an image of a file received before the course
     }
 
-    @Command(command = ["0202"])
-    fun run(ctx: CommandContext) {
+    @Command(
+        command = ["0202"],
+        description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s02e02-rozumienie-obrazu-i-wideo",
+    )
+    fun run() {
         val mapDescriptions =
             (1..4).map { mapNumber ->
-                ctx.terminal
-                    .writer()
-                    .println("AI response map $mapNumber:".ansiFormatted(style = BOLD, color = BRIGHT_MAGENTA))
-                ctx.terminal.writer().flush()
+                terminal.println("AI response map $mapNumber:".ansiFormattedAi())
 
                 val response =
                     chatClient
-                        .prompt()
-                        .user {
-                            it
-                                .text(
-                                    """
-                                    Image represents a location from a city. Please describe what can you see on the map.
-                                    Include all details like:
-                                    - street names
-                                    - points of interests
-                                    - any important infrastructure like junction or traffic circle, etc.
-                                    
-                                    Section for each detail description start with markdown header `##`.
-                                    Last section should be your thoughts about the location.
-                                    """.trimIndent(),
-                                ).media(Media(MediaType.IMAGE_JPEG, FileSystemResource(cacheDir.resolve("$mapNumber.jpeg"))))
-                        }.stream()
+                        .prompt(
+                            Prompt(
+                                listOf(
+                                    UserMessage(
+                                        """
+                                        Image represents a location from a city. Please describe what can you see on the map.
+                                        Include all details like:
+                                        - street names
+                                        - points of interests
+                                        - any important infrastructure like junction or traffic circle, etc.
+                                        
+                                        Section for each detail description start with markdown header `##`.
+                                        Last section should be your thoughts about the location.
+                                        """.trimIndent(),
+                                        Media(MediaType.IMAGE_JPEG, FileSystemResource(cacheDir.resolve("$mapNumber.jpeg"))),
+                                    ),
+                                ),
+                                imageChatOptions,
+                            ),
+                        ).stream()
                         .content()
-                        .doOnNext {
-                            ctx.terminal.writer().print(it)
-                            ctx.terminal.flush()
-                        }.collect(Collectors.joining(""))
+                        .doOnNext { terminal.print(it) }
+                        .collect(Collectors.joining(""))
                         .block() ?: throw IllegalStateException("Cannot get chat response")
 
-                ctx.terminal.writer().println()
-                ctx.terminal.writer().println()
-                ctx.terminal.writer().flush()
+                terminal.println()
+                terminal.println()
                 return@map response
             }
 
@@ -98,14 +116,11 @@ class Task0202Command(
                     """.trimMargin(),
                 ).stream()
                 .content()
-                .doOnNext {
-                    ctx.terminal.writer().print(it)
-                    ctx.terminal.flush()
-                }.collect(Collectors.joining(""))
+                .doOnNext { terminal.print(it) }
+                .collect(Collectors.joining(""))
                 .block() ?: throw IllegalStateException("Cannot get chat response")
 
-        ctx.terminal.writer().println()
-        ctx.terminal.writer().flush()
+        terminal.println()
 
         val finalResponseLines = finalResponse.split("\n")
         val answer =
@@ -117,9 +132,7 @@ class Task0202Command(
                 .key
 
         val flag = "{{FLG:${answer.uppercase()}}}"
-        ctx.terminal.writer().println("Flag:".ansiFormatted(color = BRIGHT_GREEN, style = BOLD))
-        ctx.terminal.writer().println(flag)
-        ctx.terminal.writer().flush()
+        terminal.println("Try input flag:\n$flag".ansiFormatted(style = BOLD, color = YELLOW))
     }
 
     companion object {

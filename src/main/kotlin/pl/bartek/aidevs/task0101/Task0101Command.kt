@@ -1,44 +1,49 @@
 package pl.bartek.aidevs.task0101
 
+import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.ansi.AnsiColor
-import org.springframework.boot.ansi.AnsiOutput
-import org.springframework.boot.ansi.AnsiStyle
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.AiModelVendor
+import pl.bartek.aidevs.ansiFormattedAi
+import pl.bartek.aidevs.ansiFormattedError
+import pl.bartek.aidevs.ansiFormattedSuccess
 import pl.bartek.aidevs.extractAiDevsFlag
+import pl.bartek.aidevs.println
 import pl.bartek.aidevs.removeExtraWhitespaces
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0101Command(
+    private val terminal: Terminal,
     @Value("\${aidevs.task.1.robot-system.url}") private val robotSystemUrl: String,
     @Value("\${aidevs.task.1.robot-system.username}") private val robotSystemUsername: String,
     @Value("\${aidevs.task.1.robot-system.password}") private val robotSystemPassword: String,
     aiModelVendor: AiModelVendor,
     private val restClient: RestClient,
 ) {
-
     private val chatClient = aiModelVendor.defaultChatClient()
 
-    @Command(command = ["0101"])
-    fun run(ctx: CommandContext) {
-        val question = findQuestion(ctx)
-        val answer = askAiAboutAnswer(question, ctx)
-        val response = loginToRobotsSystem(answer, ctx)
+    @Command(
+        command = ["0101"],
+        description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s01e01-interakcja-z-duzym-modelem-jezykowym",
+    )
+    fun run() {
+        val question = findQuestion()
+        val answer = askAiAboutAnswer(question)
+        val response = loginToRobotsSystem(answer)
 
         if (response.statusCode.is3xxRedirection) {
+            terminal.println("Successful answer".ansiFormattedSuccess())
             val answerPage =
                 redirect(
                     ResponseEntity
@@ -52,28 +57,15 @@ class Task0101Command(
                                     )
                                 },
                             ),
-                        ).body(""),
-                    ctx,
+                        ).body(null),
                 )
-            printFlag(answerPage, ctx)
+            printFlag(answerPage)
         } else {
-            ctx.terminal.writer().println(
-                AnsiOutput.toString(
-                    AnsiColor.RED,
-                    AnsiStyle.BOLD,
-                    "Failed to login",
-                    AnsiStyle.NORMAL,
-                    AnsiColor.DEFAULT,
-                ),
-            )
-            ctx.terminal.writer().flush()
+            terminal.println("Failed to login".ansiFormattedError())
         }
     }
 
-    private fun redirect(
-        response: ResponseEntity<String>,
-        ctx: CommandContext,
-    ): Document {
+    private fun redirect(response: ResponseEntity<String>): Document {
         val location = response.headers["location"]?.first()!!
         val newLink =
             UriComponentsBuilder
@@ -81,31 +73,20 @@ class Task0101Command(
                 .pathSegment(location)
                 .build()
                 .toUriString()
-        ctx.terminal.writer().println("Successful answer. Redirecting to '$newLink'...")
-        ctx.terminal.flush()
+        terminal.println("Redirecting to '$newLink'...")
 
         val answerPage = Jsoup.connect(newLink).get()
-        ctx.terminal.writer().println("Answer page:")
-        ctx.terminal
-            .writer()
-            .println(answerPage.wholeText().replace("\\s{2,}".toRegex(), "\n").replace("^\\s+".toRegex(), ""))
-        ctx.terminal.flush()
+        val answerPageLink = answerPage.wholeText().replace("\\s{2,}".toRegex(), "\n").replace("^\\s+".toRegex(), "")
+        terminal.println("Answer page: $answerPageLink")
         return answerPage
     }
 
-    private fun printFlag(
-        answerPage: Document,
-        ctx: CommandContext,
-    ) {
+    private fun printFlag(answerPage: Document) {
         val flag = answerPage.wholeText().extractAiDevsFlag()
-        ctx.terminal.writer().println("The flag is: $flag")
-        ctx.terminal.flush()
+        terminal.println("The flag is: $flag".ansiFormattedSuccess())
     }
 
-    private fun loginToRobotsSystem(
-        answer: String,
-        ctx: CommandContext,
-    ): ResponseEntity<String> {
+    private fun loginToRobotsSystem(answer: String): ResponseEntity<String> {
         val response =
             restClient
                 .post()
@@ -121,7 +102,7 @@ class Task0101Command(
                 ).retrieve()
                 .toEntity(String::class.java)
 
-        ctx.terminal.writer().println("Status: ${response.statusCode}")
+        terminal.println("Status: ${response.statusCode}")
         val body =
             if (response.headers.contentType?.isCompatibleWith(MediaType.TEXT_HTML) == true) {
                 Jsoup
@@ -131,15 +112,11 @@ class Task0101Command(
             } else {
                 response.body!!
             }
-        ctx.terminal.writer().println(body)
-        ctx.terminal.flush()
+        terminal.println(body)
         return response
     }
 
-    private fun askAiAboutAnswer(
-        question: String,
-        ctx: CommandContext,
-    ): String {
+    private fun askAiAboutAnswer(question: String): String {
         val answer =
             chatClient
                 .prompt()
@@ -147,17 +124,15 @@ class Task0101Command(
                 .user(question)
                 .call()
                 .content()!!
-        ctx.terminal.writer().println("The answer is:\n$answer")
-        ctx.terminal.writer().println()
-        ctx.terminal.flush()
+        terminal.println("AI response:\n$answer".ansiFormattedAi())
+        terminal.println()
         return answer
     }
 
-    private fun findQuestion(ctx: CommandContext): String {
+    private fun findQuestion(): String {
         val robotSystemPage = Jsoup.connect(robotSystemUrl).get()
         val question = robotSystemPage.select("#human-question").text()
-        ctx.terminal.writer().println(question)
-        ctx.terminal.flush()
+        terminal.println(question)
         return question
     }
 }

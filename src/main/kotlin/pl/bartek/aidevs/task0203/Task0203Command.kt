@@ -1,29 +1,31 @@
 package pl.bartek.aidevs.task0203
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jline.terminal.Terminal
 import org.springframework.ai.image.ImagePrompt
 import org.springframework.ai.openai.OpenAiImageModel
 import org.springframework.ai.openai.OpenAiImageOptions
 import org.springframework.ai.openai.api.OpenAiImageApi.ImageModel
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
+import pl.bartek.aidevs.println
 
 @Command(
     group = "task",
-    command = ["task"]
+    command = ["task"],
 )
 class Task0203Command(
-    private val aiDevsApiClient: AiDevsApiClient,
-    private val restClient: RestClient,
-    private val openAiImageModel: OpenAiImageModel,
+    private val terminal: Terminal,
     @Value("\${aidevs.api-key}") private val apiKey: String,
     @Value("\${aidevs.task.0203.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.0203.answer-url}") private val answerUrl: String,
+    private val aiDevsApiClient: AiDevsApiClient,
+    private val restClient: RestClient,
+    private val openAiImageModel: OpenAiImageModel,
 ) {
     private val imageOptions =
         OpenAiImageOptions
@@ -34,20 +36,21 @@ class Task0203Command(
             .withResponseFormat("url")
             .build()
 
-    @Command(command = ["0203"])
-    fun run(ctx: CommandContext) {
+    @Command(
+        command = ["0203"],
+        description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s02e03-generowanie-i-modyfikacja-obrazow",
+    )
+    fun run() {
         val json = fetchInputData()
-        ctx.terminal.writer().println(json.description)
-        ctx.terminal.writer().flush()
+        terminal.println(json.description)
 
         val response = openAiImageModel.call(ImagePrompt(json.description, imageOptions))
 
         val url = response.result.output.url
-        ctx.terminal.writer().println(url)
-        ctx.terminal.writer().flush()
+        terminal.println(url)
 
         val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.ROBOT_ID, url))
-        answer.println(ctx.terminal)
+        terminal.println(answer)
     }
 
     private fun fetchInputData() =

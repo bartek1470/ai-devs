@@ -1,10 +1,12 @@
 package pl.bartek.aidevs
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jline.terminal.Terminal
 import org.springframework.boot.ansi.AnsiBackground
 import org.springframework.boot.ansi.AnsiColor
 import org.springframework.boot.ansi.AnsiOutput
 import org.springframework.boot.ansi.AnsiStyle
+import pl.bartek.aidevs.courseapi.AiDevsAnswerResponse
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
@@ -63,7 +65,42 @@ fun String.ansiFormatted(
         AnsiBackground.DEFAULT,
     )
 
+fun String.ansiFormattedError(): String = ansiFormatted(style = AnsiStyle.BOLD, color = AnsiColor.BRIGHT_RED)
+
+fun String.ansiFormattedSuccess(): String = ansiFormatted(style = AnsiStyle.BOLD, color = AnsiColor.BRIGHT_GREEN)
+
+fun String.ansiFormattedAi(): String = ansiFormatted(style = AnsiStyle.BOLD, color = AnsiColor.BRIGHT_MAGENTA)
+
+fun String.ansiFormattedHuman(): String = ansiFormatted(style = AnsiStyle.BOLD, color = AnsiColor.CYAN)
+
+fun String.ansiFormattedSecondaryInfo(): String = ansiFormatted(color = AnsiColor.BRIGHT_BLACK)
+
+fun String.ansiFormattedSecondaryInfoTitle(): String = ansiFormatted(style = AnsiStyle.BOLD, color = AnsiColor.BRIGHT_BLACK)
+
 fun String.titleCase() =
     this.replaceFirstChar {
         if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
     }
+
+fun Terminal.println(str: String = "") {
+    writer().println(str)
+    flush()
+}
+
+fun Terminal.println(answerResponse: AiDevsAnswerResponse) {
+    val (code, message) = answerResponse
+    val messageToPrint = "$code, $message"
+    if (answerResponse.isError()) {
+        println(messageToPrint.ansiFormattedError())
+    } else if (answerResponse.isSuccess()) {
+        println(messageToPrint.ansiFormattedSuccess())
+    } else {
+        println(messageToPrint)
+        log.warn { "Not supported answer type" }
+    }
+}
+
+fun Terminal.print(str: String) {
+    writer().print(str)
+    flush()
+}
