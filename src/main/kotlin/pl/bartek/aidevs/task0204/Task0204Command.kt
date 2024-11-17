@@ -85,7 +85,6 @@ class Task0204Command(
             OllamaOptions
                 .builder()
                 .withModel("llava:7b")
-                .withTemperature(.0)
                 .build()
         } else {
             textChatOptions
