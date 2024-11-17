@@ -7,6 +7,9 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.messages.SystemMessage
+import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_BLACK
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_MAGENTA
@@ -16,6 +19,7 @@ import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.ansiFormatted
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
@@ -32,14 +36,15 @@ import kotlin.io.path.nameWithoutExtension
 
 @Command(group = "task")
 class Task0201Command(
-    private val apiClient: AiDevsApiClient,
-    private val restClient: RestClient,
-    private val chatClient: ChatClient,
     @Value("\${aidevs.cache-dir}") cacheDir: String,
     @Value("\${aidevs.task.0201.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.0201.answer-url}") private val answerUrl: String,
+    private val aiDevsApiClient: AiDevsApiClient,
+    private val restClient: RestClient,
+    aiModelVendor: AiModelVendor,
 ) {
     private val cacheDir = Paths.get(cacheDir, "02_01")
+    private val chatClient = aiModelVendor.defaultChatClient()
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -142,7 +147,7 @@ class Task0201Command(
                 .registerKotlinModule()
 
         val parsedXml = xmlMapper.readValue(xml, AiResponse::class.java)
-        val aiDevsAnswerResponse = apiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.MP3, parsedXml.streetName))
+        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.MP3, parsedXml.streetName))
         ctx.terminal.writer().println(aiDevsAnswerResponse)
         ctx.terminal.writer().flush()
     }

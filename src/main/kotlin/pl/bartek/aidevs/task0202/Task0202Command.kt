@@ -1,30 +1,28 @@
 package pl.bartek.aidevs.task0202
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.model.Media
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_GREEN
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_MAGENTA
-import org.springframework.boot.ansi.AnsiColor.BRIGHT_RED
 import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
+import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.ansiFormatted
-import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
 
 @Command(group = "task")
 class Task0202Command(
-    private val aiDevsApiClient: AiDevsApiClient,
-    private val chatClient: ChatClient,
     @Value("\${aidevs.cache-dir}") cacheDir: String,
+    aiModelVendor: AiModelVendor,
 ) {
     private val cacheDir = Paths.get(cacheDir, "02_02")
+    private val chatClient = aiModelVendor.defaultChatClient()
 
     init {
         Files.createDirectories(this.cacheDir)

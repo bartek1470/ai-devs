@@ -1,10 +1,10 @@
 package pl.bartek.aidevs.task3
 
-import org.springframework.ai.chat.client.ChatClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
+import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
@@ -14,10 +14,12 @@ class Task3Command(
     @Value("\${aidevs.api-key}") private val apiKey: String,
     @Value("\${aidevs.task.3.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.3.answer-url}") private val answerUrl: String,
-    private val chatClient: ChatClient,
-    private val apiClient: AiDevsApiClient,
+    aiModelVendor: AiModelVendor,
+    private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
 ) {
+    private val chatClient = aiModelVendor.defaultChatClient()
+
     @Command(command = ["task3"])
     fun run(ctx: CommandContext) {
         val industrialRobotCalibrationFile = fetchInputData()
@@ -49,7 +51,7 @@ class Task3Command(
             }
 
         val answer =
-            apiClient.sendAnswer(
+            aiDevsApiClient.sendAnswer(
                 answerUrl,
                 AiDevsAnswer(
                     Task.JSON,

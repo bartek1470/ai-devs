@@ -10,6 +10,18 @@ spring:
       enabled: false
     history:
       name: ${spring.application.name}.history.log
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: ${OPENAI_DEFAULT_MODEL:gpt-4o-mini}
+    ollama:
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${OLLAMA_DEFAULT_MODEL:llama3.2:3b}
+
 aidevs:
   cache-dir: .cache/ai-devs/
   api-key: ${AIDEVS_APIKEY}
@@ -40,6 +52,10 @@ aidevs:
     0203:
       data-url: ${AIDEVS_TASK_0203_DATAURL}
       answer-url: ${AIDEVS_TASK_0203_ANSWERURL}
+    0204:
+      data-url: ${AIDEVS_TASK_0204_DATAURL}
+      answer-url: ${AIDEVS_TASK_0204_ANSWERURL}
+
 logging:
   file:
     name: ${spring.application.name}.log

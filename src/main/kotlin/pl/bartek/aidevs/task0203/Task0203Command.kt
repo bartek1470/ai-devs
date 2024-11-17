@@ -22,24 +22,22 @@ class Task0203Command(
     @Value("\${aidevs.task.0203.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.0203.answer-url}") private val answerUrl: String,
 ) {
+    private val imageOptions =
+        OpenAiImageOptions
+            .builder()
+            .withHeight(1024)
+            .withWidth(1024)
+            .withModel(ImageModel.DALL_E_3.value)
+            .withResponseFormat("url")
+            .build()
+
     @Command(command = ["task0203"])
     fun run(ctx: CommandContext) {
         val json = fetchInputData()
         ctx.terminal.writer().println(json.description)
         ctx.terminal.writer().flush()
 
-        val response = openAiImageModel.call(
-            ImagePrompt(
-                json.description,
-                OpenAiImageOptions
-                    .builder()
-                    .withHeight(1024)
-                    .withWidth(1024)
-                    .withModel(ImageModel.DALL_E_3.value)
-                    .withResponseFormat("url")
-                    .build(),
-            ),
-        )
+        val response = openAiImageModel.call(ImagePrompt(json.description, imageOptions))
 
         val url = response.result.output.url
         ctx.terminal.writer().println(url)

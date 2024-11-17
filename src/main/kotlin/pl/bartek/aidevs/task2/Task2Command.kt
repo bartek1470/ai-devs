@@ -9,14 +9,17 @@ import org.springframework.shell.command.CommandContext
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
+import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.isAiDevsFlag
 
 @Command(group = "task")
 class Task2Command(
     @Value("\${aidevs.task.2.conversation-url}") private val conversationUrl: String,
-    private val chatClient: ChatClient,
+    aiModelVendor: AiModelVendor,
     private val restClient: RestClient,
 ) {
+
+    private val chatClient = aiModelVendor.defaultChatClient()
     private var patrollingRobotConversation: PatrollingRobotConversation = PatrollingRobotConversation()
 
     @Command(command = ["task2"])

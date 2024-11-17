@@ -2,7 +2,6 @@ package pl.bartek.aidevs.task1
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.springframework.ai.chat.client.ChatClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor
 import org.springframework.boot.ansi.AnsiOutput
@@ -15,17 +14,21 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.extractAiDevsFlag
 import pl.bartek.aidevs.removeExtraWhitespaces
 
 @Command(group = "task")
 class Task1Command(
-    private val chatClient: ChatClient,
-    private val restClient: RestClient,
     @Value("\${aidevs.task.1.robot-system.url}") private val robotSystemUrl: String,
     @Value("\${aidevs.task.1.robot-system.username}") private val robotSystemUsername: String,
     @Value("\${aidevs.task.1.robot-system.password}") private val robotSystemPassword: String,
+    aiModelVendor: AiModelVendor,
+    private val restClient: RestClient,
 ) {
+
+    private val chatClient = aiModelVendor.defaultChatClient()
+
     @Command(command = ["task1"])
     fun run(ctx: CommandContext) {
         val question = findQuestion(ctx)
