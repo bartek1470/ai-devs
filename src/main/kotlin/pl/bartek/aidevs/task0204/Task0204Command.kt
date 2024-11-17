@@ -158,10 +158,10 @@ class Task0204Command(
                             Your response should be in format as below, where TYPE is one of: HARDWARE_ISSUES, PEOPLE_PRESENCE, CAPTURED_PEOPLE.
                             <TYPE>
                             """.trimIndent(),
-                            Media(MediaType.IMAGE_JPEG, imageResource),
+                            Media(MediaType.IMAGE_PNG, imageResource),
                         ),
                     ),
-                    textChatOptions,
+                    imageChatOptions,
                 ),
             ).stream()
             .content()
