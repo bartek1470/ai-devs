@@ -37,6 +37,9 @@ aidevs:
     0201:
       data-url: ${AIDEVS_TASK_0201_DATAURL}
       answer-url: ${AIDEVS_TASK_0201_ANSWERURL}
+    0203:
+      data-url: ${AIDEVS_TASK_0203_DATAURL}
+      answer-url: ${AIDEVS_TASK_0203_ANSWERURL}
 logging:
   file:
     name: ${spring.application.name}.log

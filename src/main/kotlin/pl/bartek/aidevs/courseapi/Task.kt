@@ -7,4 +7,5 @@ enum class Task(
     JSON("JSON"),
     CENZURA("CENZURA"),
     MP3("mp3"),
+    ROBOT_ID("robotid"),
 }
