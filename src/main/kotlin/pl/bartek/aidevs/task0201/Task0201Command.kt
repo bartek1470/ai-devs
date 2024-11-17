@@ -13,6 +13,7 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.AiModelVendor
+import pl.bartek.aidevs.transcript.TranscriptService
 import pl.bartek.aidevs.ansiFormattedAi
 import pl.bartek.aidevs.ansiFormattedError
 import pl.bartek.aidevs.ansiFormattedSecondaryInfo
@@ -24,6 +25,8 @@ import pl.bartek.aidevs.print
 import pl.bartek.aidevs.println
 import pl.bartek.aidevs.removeExtraWhitespaces
 import pl.bartek.aidevs.titleCase
+import pl.bartek.aidevs.transcript.FileToTranscribe
+import pl.bartek.aidevs.transcript.WhisperLanguage
 import pl.bartek.aidevs.unzip
 import java.nio.file.Files
 import java.nio.file.Path
@@ -44,6 +47,7 @@ class Task0201Command(
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     aiModelVendor: AiModelVendor,
+    private val transcriptService: TranscriptService,
 ) {
     private val cacheDir = Paths.get(cacheDir, "02_01")
     private val chatClient = aiModelVendor.defaultChatClient()
@@ -58,12 +62,13 @@ class Task0201Command(
     )
     fun run() {
         val recordingsPath = fetchInputData()
-        val recordingPaths: List<Path> =
+        val recordingPaths =
             Files
                 .list(recordingsPath)
                 .filter { it.extension == "m4a" }
+                .map { FileToTranscribe(it, language = WhisperLanguage.POLISH) }
                 .toList()
-        val recordings = transcribe(recordingsPath, *recordingPaths.toTypedArray())
+        val recordings = transcriptService.transcribe(*recordingPaths.toTypedArray())
 
         val systemPrompt =
             """
@@ -161,57 +166,6 @@ class Task0201Command(
                 .registerKotlinModule()
 
         return xmlMapper.readValue(xml, AiResponse::class.java)
-    }
-
-    private fun transcribe(
-        outputPath: Path,
-        vararg files: Path,
-    ): List<Recording> =
-        files.map { recordingPath ->
-            val transcriptPath = outputPath.resolve("${recordingPath.nameWithoutExtension}.txt")
-
-            if (Files.notExists(transcriptPath)) {
-                createTranscript(transcriptPath, outputPath)
-            }
-            val transcript = Files.readString(transcriptPath)
-            Recording(recordingPath, transcriptPath, transcript)
-        }
-
-    private fun createTranscript(
-        file: Path,
-        outputPath: Path,
-    ) {
-        // TODO [bartek1470] second option -> OpenAiAudioTranscriptionModel - via OpenAI API
-
-        try {
-            log.info { "Transcribing $file" }
-            val process =
-                ProcessBuilder(
-                    "whisper",
-                    "--task",
-                    "transcribe",
-                    "--model",
-                    "medium",
-                    "--language",
-                    "Polish",
-                    "--output_format",
-                    "txt",
-                    "--output_dir",
-                    outputPath.toAbsolutePath().toString(),
-                    file.toAbsolutePath().toString(),
-                ).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT).start()
-
-            val exitCode = process.waitFor()
-
-            if (exitCode == 0) {
-                log.debug { "Successfully processed $file" }
-            } else {
-                log.error { "Error processing $file with exit code $exitCode" }
-            }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to execute whisper command for $file" }
-            throw IllegalStateException("Failed to transcribe: $file", e)
-        }
     }
 
     private fun fetchInputData(): Path {

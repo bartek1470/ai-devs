@@ -1,6 +1,5 @@
 .cache/ai-devs/**
 .env.*
-.cache/ai-devs/*
 *.log
 *.gz
 HELP.md

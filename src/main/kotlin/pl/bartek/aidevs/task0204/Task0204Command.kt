@@ -7,7 +7,6 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.prompt.ChatOptions
-import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.model.Media
 import org.springframework.ai.ollama.OllamaChatModel
 import org.springframework.ai.ollama.api.OllamaOptions
@@ -18,18 +17,23 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
-import org.springframework.http.MediaType.IMAGE_PNG_VALUE
-import org.springframework.http.MediaType.TEXT_PLAIN_VALUE
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.ansiFormattedAi
+import pl.bartek.aidevs.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
+import pl.bartek.aidevs.courseapi.Task
 import pl.bartek.aidevs.print
 import pl.bartek.aidevs.println
-import pl.bartek.aidevs.task0201.Recording
+import pl.bartek.aidevs.transcript.FileToTranscribe
+import pl.bartek.aidevs.transcript.TranscriptService
+import pl.bartek.aidevs.transcript.WhisperLanguage
 import pl.bartek.aidevs.unzip
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -52,6 +56,7 @@ class Task0204Command(
     openAiChatModel: OpenAiChatModel,
     ollamaChatModel: OllamaChatModel,
     aiModelVendor: AiModelVendor,
+    private val transcriptService: TranscriptService,
 ) {
     private val cacheDir = Paths.get(cacheDir, "02_04")
 
@@ -71,21 +76,30 @@ class Task0204Command(
         } else {
             OpenAiChatOptions
                 .builder()
-                .withModel(OpenAiApi.ChatModel.GPT_4_O_MINI)
+                .withModel(OpenAiApi.ChatModel.GPT_4_O)
                 .build()
         }
-
-    private val audioChatOptions: ChatOptions = textChatOptions
 
     private val imageChatOptions: ChatOptions =
         if (aiModelVendor.isOllamaPreferred()) {
             OllamaOptions
                 .builder()
                 .withModel("llava:7b")
+                .withTemperature(.0)
                 .build()
         } else {
             textChatOptions
         }
+
+    private val prompt =
+        """
+        Answer if the content is about captured people (not including brigade), presence of people nearby (not including brigade) or technical hardware issues (not software).
+        Response has to be one word and nothing else, without any XML or markdown formatting. The word should be:
+        * `${NoteContent.HARDWARE}` - for hardware issues
+        * `${NoteContent.PRESENCE}` - for people presence
+        * `${NoteContent.CAPTURE}` - for captured people
+        * `${NoteContent.NONE}` - for none of above
+        """.trimIndent()
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -97,101 +111,62 @@ class Task0204Command(
     )
     fun run() {
         val factoryDataPath = fetchInputData()
-        val resourcesToProcess =
+//        val filesToProcess = setOf(
+//            "2024-11-12_report-10-sektor-C1.mp3",
+//            "2024-11-12_report-11-sektor-C2.mp3",
+//            "2024-11-12_report-12-sektor_A1.mp3",
+//        )
+        val preparedNotes =
             Files
                 .list(factoryDataPath)
                 .filter { Files.isRegularFile(it) }
-//            .flatMap { file: Path ->
-// //                prepareContent(file, factoryDataPath, ctx)
-//            }
                 .flatMap { file: Path ->
-                    mapToResourceWithType(file)
+                    prepareFiles(file)
                 }.toList()
-                .groupBy { it.first }
-                .mapValues { it.value.map { file -> file.second } }
-
-        val result =
-            resourcesToProcess.entries.flatMap { entry ->
-                when (entry.key) {
-                    TEXT_PLAIN_VALUE ->
-                        listOf()
-//                        entry.value.map {
-//                            terminal.println("AI response to ${it.filename}:".ansiFormattedAi())
-//                            processText(it)
-//                            terminal.println()
-//                            terminal.println()
-//                        }
-                    "audio" ->
-                        listOf()
-//                        entry.value.map {
-//                            terminal.println("AI response to ${it.filename}:".ansiFormattedAi())
-//                            processAudio(it)
-//                            terminal.println()
-//                            terminal.println()
-//
-//                        }
-                    IMAGE_PNG_VALUE ->
-                        entry.value.map {
-                            terminal.println("AI response to ${it.filename}:".ansiFormattedAi())
-                            processImage(it)
-                            terminal.println()
-                            terminal.println()
+//                .filter { filesToProcess.contains(it.file.fileName.toString()) }
+                .sortedBy { it.file.fileName }
+                .toList()
+        val notes =
+            preparedNotes
+                .groupBy { note ->
+                    terminal.print("AI response to ${note.file.fileName}: ".ansiFormattedAi())
+                    val content =
+                        if (note.mimeType == MediaType.IMAGE_PNG) {
+                            processImage(FileSystemResource(note.resourcePathToProcess))
+                        } else {
+                            processText(FileSystemResource(note.resourcePathToProcess))
                         }
-                    else -> throw UnsupportedOperationException("Invalid file type ${entry.key}")
-                }
-            }
+                    terminal.println()
+                    content
+                }.mapKeys { NoteContent.valueOf(it.key.trim().uppercase()) }
+                .mapValues { it.value.map { note -> note.file.fileName.toString() } }
+
+        val answer =
+            NotesContent(
+                people = (notes[NoteContent.PRESENCE] ?: listOf()) + (notes[NoteContent.CAPTURE] ?: listOf()),
+                hardware = notes[NoteContent.HARDWARE] ?: listOf(),
+            )
+
+        terminal.println("Summary:".ansiFormattedSecondaryInfoTitle())
+        terminal.println("People:\n\t${answer.people.joinToString("\n\t")}".ansiFormattedSecondaryInfo())
+        terminal.println("Hardware:\n\t${answer.hardware.joinToString("\n\t")}".ansiFormattedSecondaryInfo())
+        terminal.println()
+
+        val aiDevsAnswer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.KATEGORIE, answer))
+        terminal.println(aiDevsAnswer)
     }
 
     private fun processImage(imageResource: Resource): String =
         chatClient
-            .prompt(
-                Prompt(
-                    listOf(
-                        UserMessage(
-                            """
-                            Find any information that is referring to:
-                            - captured people
-                            - presence of people
-                            - hardware issues
-                            
-                            Skip information about software. Focus only on those 3 things mentioned above.
-                            Your response should be in format as below, where TYPE is one of: HARDWARE_ISSUES, PEOPLE_PRESENCE, CAPTURED_PEOPLE.
-                            <TYPE>
-                            """.trimIndent(),
-                            Media(MediaType.IMAGE_PNG, imageResource),
-                        ),
-                    ),
-                    imageChatOptions,
+            .prompt()
+            .options(imageChatOptions)
+            .messages(
+                UserMessage(
+                    "",
+                    Media(MediaType.IMAGE_PNG, imageResource),
                 ),
-            ).stream()
-            .content()
-            .doOnNext {
-                terminal.print(it)
-            }.collect(Collectors.joining(""))
-            .block() ?: throw IllegalStateException("Cannot get chat response")
-
-    private fun processAudio(audioResource: Resource): String =
-        chatClient
-            .prompt(
-                Prompt(
-                    listOf(
-                        UserMessage(
-                            """
-                            Find any information that is referring to:
-                            - captured people
-                            - presence of people
-                            - hardware issues
-                            
-                            Skip information about software. Focus only on those 3 things mentioned above.
-                            Your response should be in format as below, where TYPE is one of: HARDWARE_ISSUES, PEOPLE_PRESENCE, CAPTURED_PEOPLE.
-                            <TYPE>
-                            """.trimIndent(),
-                            Media(MediaType.APPLICATION_OCTET_STREAM, audioResource),
-                        ),
-                    ),
-                    audioChatOptions,
-                ),
-            ).stream()
+            ).system(prompt)
+            .stream()
             .content()
             .doOnNext { terminal.print(it) }
             .collect(Collectors.joining(""))
@@ -199,132 +174,26 @@ class Task0204Command(
 
     private fun processText(textResource: Resource): String =
         chatClient
-            .prompt(
-                Prompt(
-                    listOf(
-                        UserMessage(
-                            """
-                            Find any information that is referring to:
-                            - captured people
-                            - presence of people
-                            - hardware issues
-                            
-                            Skip information about software. Focus only on those 3 things mentioned above.
-                            Your response should be in format as below, where TYPE is one of: HARDWARE_ISSUES, PEOPLE_PRESENCE, CAPTURED_PEOPLE.
-                            <TYPE>
-                            """.trimIndent(),
-                            Media(MediaType.TEXT_PLAIN, textResource),
-                        ),
-                    ),
-                    textChatOptions,
-                ),
-            ).stream()
+            .prompt()
+            .options(textChatOptions)
+            .system(prompt)
+            .messages(UserMessage(textResource.getContentAsString(StandardCharsets.UTF_8)))
+            .stream()
             .content()
             .doOnNext { terminal.print(it) }
             .collect(Collectors.joining(""))
             .block() ?: throw IllegalStateException("Cannot get chat response")
 
-    private fun mapToResourceWithType(file: Path): Stream<Pair<String, Resource>> =
+    private fun prepareFiles(file: Path): Stream<Note> =
         when (file.extension) {
-            "txt" -> Stream.of(Pair(TEXT_PLAIN_VALUE, FileSystemResource(file)))
-            "mp3" -> Stream.of(Pair("audio", FileSystemResource(file)))
-            "png" -> Stream.of(Pair(IMAGE_PNG_VALUE, FileSystemResource(file)))
-            else -> Stream.empty()
-        }
-
-    private fun prepareContent(
-        file: Path,
-        factoryDataPath: Path,
-    ): Stream<NoteContent> =
-        when (file.extension) {
-            "txt" -> Stream.of(NoteContent(file, Files.readString(file)))
+            "txt" -> Stream.of(Note(file, file, MediaType.TEXT_PLAIN))
             "mp3" -> {
-                val transcriptPath = factoryDataPath.resolve("${file.nameWithoutExtension}.txt")
-                val content =
-                    if (Files.exists(transcriptPath)) {
-                        Files.readString(file)
-                    } else {
-                        transcribe(cacheDir, file)[0].transcript
-                    }!!
-                Stream.of(NoteContent(file, content))
+                val recordings = transcriptService.transcribe(FileToTranscribe(file, language = WhisperLanguage.ENGLISH))
+                Stream.of(Note(file, recordings[0].transcriptPath, MediaType.TEXT_PLAIN))
             }
-
-            "png" -> Stream.of(NoteContent(file, describeImage(file)))
+            "png" -> Stream.of(Note(file, file, MediaType.IMAGE_PNG))
             else -> Stream.empty()
         }
-
-    private fun describeImage(imagePath: Path): String {
-        terminal.println("AI response to $imagePath:".ansiFormattedAi())
-        return chatClient
-            .prompt(
-                Prompt(
-                    listOf(
-                        UserMessage(
-                            """
-                            Describe the image
-                            """.trimIndent(),
-                            Media(MediaType.IMAGE_JPEG, FileSystemResource(cacheDir.resolve(imagePath))),
-                        ),
-                    ),
-                    imageChatOptions,
-                ),
-            ).stream()
-            .content()
-            .doOnNext { terminal.print(it) }
-            .collect(Collectors.joining(""))
-            .block() ?: throw IllegalStateException("Cannot get chat response")
-    }
-
-    private fun transcribe(
-        outputPath: Path,
-        vararg files: Path,
-    ): List<Recording> =
-        files.map { recordingPath ->
-            val transcriptPath = outputPath.resolve("${recordingPath.nameWithoutExtension}.txt")
-
-            if (Files.notExists(transcriptPath)) {
-                createTranscript(transcriptPath, outputPath)
-            }
-            val transcript = Files.readString(transcriptPath)
-            Recording(recordingPath, transcriptPath, transcript)
-        }
-
-    private fun createTranscript(
-        file: Path,
-        outputPath: Path,
-    ) {
-        // TODO [bartek1470] second option -> OpenAiAudioTranscriptionModel - via OpenAI API
-
-        try {
-            log.info { "Transcribing $file" }
-            val process =
-                ProcessBuilder(
-                    "whisper",
-                    "--task",
-                    "transcribe",
-                    "--model",
-                    "medium",
-                    "--language",
-                    "Polish",
-                    "--output_format",
-                    "txt",
-                    "--output_dir",
-                    outputPath.toAbsolutePath().toString(),
-                    file.toAbsolutePath().toString(),
-                ).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT).start()
-
-            val exitCode = process.waitFor()
-
-            if (exitCode == 0) {
-                log.debug { "Successfully processed $file" }
-            } else {
-                log.error { "Error processing $file with exit code $exitCode" }
-            }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to execute whisper command for $file" }
-            throw IllegalStateException("Failed to transcribe: $file", e)
-        }
-    }
 
     private fun fetchInputData(): Path {
         val uriComponents =

@@ -37,14 +37,14 @@ class Task0104Command(
                |p X p X p p
                |o X p p p F
                |
-               |Find a path in the map from 'o' to 'F' respecting rules below:
+               |Find a resourcePathToProcess in the map from 'o' to 'F' respecting rules below:
                |1. Move through 'p'
                |2. Avoid 'X'
                |3. You always move by one cell
                |4. You are limited by map boundaries
                |5. Think if a move is legal before making it
                |6. If there is no legal moves then take a step back and think again what are legal moves
-               |7. Return a found path in a format `<RESULT>{"steps": "UP, LEFT, RIGHT, DOWN"}</RESULT>`
+               |7. Return a found resourcePathToProcess in a format `<RESULT>{"steps": "UP, LEFT, RIGHT, DOWN"}</RESULT>`
             """.trimMargin()
 
         terminal.println(request)
