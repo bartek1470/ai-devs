@@ -1,6 +1,5 @@
-package pl.bartek.aidevs.task2
+package pl.bartek.aidevs.task0102
 
-import org.springframework.ai.chat.client.ChatClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor
 import org.springframework.boot.ansi.AnsiOutput
@@ -12,8 +11,11 @@ import org.springframework.web.client.body
 import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.isAiDevsFlag
 
-@Command(group = "task")
-class Task2Command(
+@Command(
+    group = "task",
+    command = ["task"]
+)
+class Task0102Command(
     @Value("\${aidevs.task.2.conversation-url}") private val conversationUrl: String,
     aiModelVendor: AiModelVendor,
     private val restClient: RestClient,
@@ -22,7 +24,7 @@ class Task2Command(
     private val chatClient = aiModelVendor.defaultChatClient()
     private var patrollingRobotConversation: PatrollingRobotConversation = PatrollingRobotConversation()
 
-    @Command(command = ["task2"])
+    @Command(command = ["0102"])
     fun run(ctx: CommandContext) {
         patrollingRobotConversation = PatrollingRobotConversation()
         val robotQuestion = say("READY", ctx)

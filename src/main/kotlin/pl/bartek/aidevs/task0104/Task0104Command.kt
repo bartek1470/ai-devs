@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task4
+package pl.bartek.aidevs.task0104
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -12,13 +12,16 @@ import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 
-@Command(group = "task")
-class Task4Command(
+@Command(
+    group = "task",
+    command = ["task"]
+)
+class Task0104Command(
     @Value("\${aidevs.task.4.answer-url}") private val answerUrl: String,
     @Value("\${aidevs.task.4.file-base-url}") private val fileBaseUrl: String,
     private val restClient: RestClient,
 ) {
-    @Command(command = ["task4"])
+    @Command(command = ["0104"])
     fun run(ctx: CommandContext) {
         val request =
             """|Map:

@@ -39,7 +39,10 @@ import java.util.stream.Stream
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 
-@Command(group = "task")
+@Command(
+    group = "task",
+    command = ["task"]
+)
 class Task0204Command(
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
@@ -88,7 +91,7 @@ class Task0204Command(
         Files.createDirectories(this.cacheDir)
     }
 
-    @Command(command = ["task0204"])
+    @Command(command = ["0204"])
     fun run(ctx: CommandContext) {
         val factoryDataPath = fetchInputData()
         val resourcesToProcess =

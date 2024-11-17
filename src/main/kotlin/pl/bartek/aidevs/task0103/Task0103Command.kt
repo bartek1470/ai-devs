@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task3
+package pl.bartek.aidevs.task0103
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.shell.command.CommandContext
@@ -9,8 +9,11 @@ import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
 
-@Command(group = "task")
-class Task3Command(
+@Command(
+    group = "task",
+    command = ["task"]
+)
+class Task0103Command(
     @Value("\${aidevs.api-key}") private val apiKey: String,
     @Value("\${aidevs.task.3.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.3.answer-url}") private val answerUrl: String,
@@ -20,7 +23,7 @@ class Task3Command(
 ) {
     private val chatClient = aiModelVendor.defaultChatClient()
 
-    @Command(command = ["task3"])
+    @Command(command = ["0103"])
     fun run(ctx: CommandContext) {
         val industrialRobotCalibrationFile = fetchInputData()
         val newTestData =

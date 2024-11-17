@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task1
+package pl.bartek.aidevs.task0101
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -18,8 +18,11 @@ import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.extractAiDevsFlag
 import pl.bartek.aidevs.removeExtraWhitespaces
 
-@Command(group = "task")
-class Task1Command(
+@Command(
+    group = "task",
+    command = ["task"]
+)
+class Task0101Command(
     @Value("\${aidevs.task.1.robot-system.url}") private val robotSystemUrl: String,
     @Value("\${aidevs.task.1.robot-system.username}") private val robotSystemUsername: String,
     @Value("\${aidevs.task.1.robot-system.password}") private val robotSystemPassword: String,
@@ -29,7 +32,7 @@ class Task1Command(
 
     private val chatClient = aiModelVendor.defaultChatClient()
 
-    @Command(command = ["task1"])
+    @Command(command = ["0101"])
     fun run(ctx: CommandContext) {
         val question = findQuestion(ctx)
         val answer = askAiAboutAnswer(question, ctx)

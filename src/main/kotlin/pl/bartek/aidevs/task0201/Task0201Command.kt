@@ -34,7 +34,10 @@ import java.util.stream.Collectors
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 
-@Command(group = "task")
+@Command(
+    group = "task",
+    command = ["task"]
+)
 class Task0201Command(
     @Value("\${aidevs.cache-dir}") cacheDir: String,
     @Value("\${aidevs.task.0201.data-url}") private val dataUrl: String,
@@ -50,7 +53,7 @@ class Task0201Command(
         Files.createDirectories(this.cacheDir)
     }
 
-    @Command(command = ["task0201"])
+    @Command(command = ["0201"])
     fun run(ctx: CommandContext) {
         val recordingsPath = fetchInputData()
         val recordingPaths: List<Path> =

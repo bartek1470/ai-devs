@@ -13,7 +13,10 @@ import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
 
-@Command(group = "task")
+@Command(
+    group = "task",
+    command = ["task"]
+)
 class Task0203Command(
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
@@ -31,7 +34,7 @@ class Task0203Command(
             .withResponseFormat("url")
             .build()
 
-    @Command(command = ["task0203"])
+    @Command(command = ["0203"])
     fun run(ctx: CommandContext) {
         val json = fetchInputData()
         ctx.terminal.writer().println(json.description)

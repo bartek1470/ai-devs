@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task5
+package pl.bartek.aidevs.task0105
 
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
@@ -15,8 +15,11 @@ import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
 import java.util.stream.Collectors
 
-@Command(group = "task")
-class Task5Command(
+@Command(
+    group = "task",
+    command = ["task"]
+)
+class Task0105Command(
     @Value("\${aidevs.api-key}") private val apiKey: String,
     @Value("\${aidevs.task.5.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.5.answer-url}") private val answerUrl: String,
@@ -31,7 +34,7 @@ class Task5Command(
             .withTemperature(.0)
             .build()
 
-    @Command(command = ["task5"])
+    @Command(command = ["0105"])
     fun run(ctx: CommandContext) {
         val toBeConsored = fetchInputData()
 

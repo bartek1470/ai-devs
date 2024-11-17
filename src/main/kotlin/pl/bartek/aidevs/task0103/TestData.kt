@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task3
+package pl.bartek.aidevs.task0103
 
 import com.fasterxml.jackson.annotation.JsonInclude
 

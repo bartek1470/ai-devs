@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task0
+package pl.bartek.aidevs.taskpoligon
 
 import org.jsoup.Jsoup
 import org.springframework.beans.factory.annotation.Value
@@ -13,14 +13,17 @@ import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
 import pl.bartek.aidevs.removeExtraWhitespaces
 
-@Command(group = "task")
-class Task0Command(
+@Command(
+    group = "task",
+    command = ["task"]
+)
+class TaskPoligonCommand(
     @Value("\${aidevs.task.0.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.0.answer-url}") private val answerUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
 ) {
-    @Command(command = ["task0"])
+    @Command(command = ["poligon"])
     fun run(ctx: CommandContext) {
         val data = fetchInputData()
         val response = aiDevsApiClient.sendAnswerReceiveText(answerUrl, AiDevsAnswer(Task.POLIGON, data))

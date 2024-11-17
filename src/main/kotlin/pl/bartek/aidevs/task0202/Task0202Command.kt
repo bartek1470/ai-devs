@@ -16,7 +16,10 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
 
-@Command(group = "task")
+@Command(
+    group = "task",
+    command = ["task"]
+)
 class Task0202Command(
     @Value("\${aidevs.cache-dir}") cacheDir: String,
     aiModelVendor: AiModelVendor,
@@ -30,7 +33,7 @@ class Task0202Command(
         // those are manually cropped from an image of a file received before the course
     }
 
-    @Command(command = ["task0202"])
+    @Command(command = ["0202"])
     fun run(ctx: CommandContext) {
         val mapDescriptions =
             (1..4).map { mapNumber ->
