@@ -26,8 +26,8 @@ import java.util.stream.Collectors
 class Task0105Command(
     private val terminal: Terminal,
     @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.5.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.5.answer-url}") private val answerUrl: String,
+    @Value("\${aidevs.task.0105.data-url}") private val dataUrl: String,
+    @Value("\${aidevs.task.0105.answer-url}") private val answerUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     aiModelVendor: AiModelVendor,

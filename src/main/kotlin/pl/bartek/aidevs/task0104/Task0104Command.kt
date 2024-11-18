@@ -21,8 +21,8 @@ import pl.bartek.aidevs.println
 )
 class Task0104Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.task.4.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.task.4.file-base-url}") private val fileBaseUrl: String,
+    @Value("\${aidevs.task.0104.answer-url}") private val answerUrl: String,
+    @Value("\${aidevs.task.0104.file-base-url}") private val fileBaseUrl: String,
     private val restClient: RestClient,
 ) {
     @Command(

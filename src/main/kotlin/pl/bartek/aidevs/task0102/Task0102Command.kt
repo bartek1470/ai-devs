@@ -21,7 +21,7 @@ import pl.bartek.aidevs.println
 )
 class Task0102Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.task.2.conversation-url}") private val conversationUrl: String,
+    @Value("\${aidevs.task.0102.conversation-url}") private val conversationUrl: String,
     aiModelVendor: AiModelVendor,
     private val restClient: RestClient,
 ) {

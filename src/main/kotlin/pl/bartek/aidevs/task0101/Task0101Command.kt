@@ -25,9 +25,9 @@ import pl.bartek.aidevs.removeExtraWhitespaces
 )
 class Task0101Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.task.1.robot-system.url}") private val robotSystemUrl: String,
-    @Value("\${aidevs.task.1.robot-system.username}") private val robotSystemUsername: String,
-    @Value("\${aidevs.task.1.robot-system.password}") private val robotSystemPassword: String,
+    @Value("\${aidevs.task.0101.robot-system.url}") private val robotSystemUrl: String,
+    @Value("\${aidevs.task.0101.robot-system.username}") private val robotSystemUsername: String,
+    @Value("\${aidevs.task.0101.robot-system.password}") private val robotSystemPassword: String,
     aiModelVendor: AiModelVendor,
     private val restClient: RestClient,
 ) {

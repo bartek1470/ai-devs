@@ -20,8 +20,8 @@ import pl.bartek.aidevs.removeExtraWhitespaces
 )
 class TaskPoligonCommand(
     private val terminal: Terminal,
-    @Value("\${aidevs.task.0.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0.answer-url}") private val answerUrl: String,
+    @Value("\${aidevs.task.poligon.data-url}") private val dataUrl: String,
+    @Value("\${aidevs.task.poligon.answer-url}") private val answerUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
 ) {

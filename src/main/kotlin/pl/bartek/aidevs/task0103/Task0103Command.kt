@@ -17,8 +17,8 @@ import pl.bartek.aidevs.println
 class Task0103Command(
     private val terminal: Terminal,
     @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.3.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.3.answer-url}") private val answerUrl: String,
+    @Value("\${aidevs.task.0103.data-url}") private val dataUrl: String,
+    @Value("\${aidevs.task.0103.answer-url}") private val answerUrl: String,
     aiModelVendor: AiModelVendor,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
