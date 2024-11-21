@@ -8,17 +8,13 @@ import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
-import java.nio.file.Paths
 
 @Component
 class AiDevsApiClient(
     @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.cache-dir}") cacheDir: String,
     private val objectMapper: ObjectMapper,
     private val restClient: RestClient,
 ) {
-    private val cookie = Paths.get(cacheDir).resolve("cookie.txt")
-
     fun <T> sendAnswer(
         uri: String,
         answer: AiDevsAnswer<T>,

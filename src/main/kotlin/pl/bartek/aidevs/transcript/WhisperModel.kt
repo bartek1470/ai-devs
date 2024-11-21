@@ -1,6 +1,8 @@
 package pl.bartek.aidevs.transcript
 
-enum class WhisperModel(val modelName: String) {
+enum class WhisperModel(
+    val modelName: String,
+) {
     TINY("tiny"),
     TINY_EN("tiny.en"),
     BASE("base"),

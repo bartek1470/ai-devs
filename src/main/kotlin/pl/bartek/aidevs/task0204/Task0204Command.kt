@@ -21,6 +21,7 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.AiModelVendor
+import pl.bartek.aidevs.TaskId
 import pl.bartek.aidevs.ansiFormattedAi
 import pl.bartek.aidevs.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.ansiFormattedSecondaryInfoTitle
@@ -58,7 +59,7 @@ class Task0204Command(
     aiModelVendor: AiModelVendor,
     private val transcriptService: TranscriptService,
 ) {
-    private val cacheDir = Paths.get(cacheDir, "02_04")
+    private val cacheDir = Paths.get(cacheDir, TaskId.TASK_0204.cacheFolderName())
 
     private val chatModel: ChatModel = if (aiModelVendor.isOllamaPreferred()) ollamaChatModel else openAiChatModel
     private val chatClient =
@@ -187,8 +188,12 @@ class Task0204Command(
         when (file.extension) {
             "txt" -> Stream.of(Note(file, file, MediaType.TEXT_PLAIN))
             "mp3" -> {
-                val recordings = transcriptService.transcribe(FileToTranscribe(file, language = WhisperLanguage.ENGLISH))
-                Stream.of(Note(file, recordings[0].transcriptPath, MediaType.TEXT_PLAIN))
+                val recording =
+                    transcriptService.transcribe(
+                        FileToTranscribe(FileSystemResource(file), language = WhisperLanguage.ENGLISH),
+                        TaskId.TASK_0204,
+                    )
+                Stream.of(Note(file, recording.transcriptPath, MediaType.TEXT_PLAIN))
             }
             "png" -> Stream.of(Note(file, file, MediaType.IMAGE_PNG))
             else -> Stream.empty()

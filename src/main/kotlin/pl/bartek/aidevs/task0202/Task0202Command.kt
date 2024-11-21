@@ -5,7 +5,6 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.model.Media
-import org.springframework.ai.ollama.api.OllamaModel
 import org.springframework.ai.ollama.api.OllamaOptions
 import org.springframework.ai.openai.OpenAiChatOptions
 import org.springframework.beans.factory.annotation.Value
@@ -15,6 +14,7 @@ import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import pl.bartek.aidevs.AiModelVendor
+import pl.bartek.aidevs.TaskId
 import pl.bartek.aidevs.ansiFormatted
 import pl.bartek.aidevs.ansiFormattedAi
 import pl.bartek.aidevs.print
@@ -32,7 +32,7 @@ class Task0202Command(
     @Value("\${aidevs.cache-dir}") cacheDir: String,
     aiModelVendor: AiModelVendor,
 ) {
-    private val cacheDir = Paths.get(cacheDir, "02_02")
+    private val cacheDir = Paths.get(cacheDir, TaskId.TASK_0202.cacheFolderName())
     private val chatClient = aiModelVendor.defaultChatClient()
     private val imageChatOptions =
         if (aiModelVendor.isOllamaPreferred()) {

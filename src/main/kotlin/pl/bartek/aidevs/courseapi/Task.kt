@@ -9,4 +9,5 @@ enum class Task(
     MP3("mp3"),
     ROBOT_ID("robotid"),
     KATEGORIE("kategorie"),
+    ARXIV("arxiv"),
 }

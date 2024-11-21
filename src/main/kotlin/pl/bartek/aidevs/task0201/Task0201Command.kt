@@ -8,12 +8,13 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.transcript.TranscriptService
+import pl.bartek.aidevs.TaskId
 import pl.bartek.aidevs.ansiFormattedAi
 import pl.bartek.aidevs.ansiFormattedError
 import pl.bartek.aidevs.ansiFormattedSecondaryInfo
@@ -26,6 +27,7 @@ import pl.bartek.aidevs.println
 import pl.bartek.aidevs.removeExtraWhitespaces
 import pl.bartek.aidevs.titleCase
 import pl.bartek.aidevs.transcript.FileToTranscribe
+import pl.bartek.aidevs.transcript.TranscriptService
 import pl.bartek.aidevs.transcript.WhisperLanguage
 import pl.bartek.aidevs.unzip
 import java.nio.file.Files
@@ -49,7 +51,7 @@ class Task0201Command(
     aiModelVendor: AiModelVendor,
     private val transcriptService: TranscriptService,
 ) {
-    private val cacheDir = Paths.get(cacheDir, "02_01")
+    private val cacheDir = Paths.get(cacheDir, TaskId.TASK_0201.cacheFolderName())
     private val chatClient = aiModelVendor.defaultChatClient()
 
     init {
@@ -66,9 +68,9 @@ class Task0201Command(
             Files
                 .list(recordingsPath)
                 .filter { it.extension == "m4a" }
-                .map { FileToTranscribe(it, language = WhisperLanguage.POLISH) }
+                .map { FileToTranscribe(FileSystemResource(it), language = WhisperLanguage.POLISH) }
                 .toList()
-        val recordings = transcriptService.transcribe(*recordingPaths.toTypedArray())
+        val recordings = recordingPaths.map { transcriptService.transcribe(it, TaskId.TASK_0201) }
 
         val systemPrompt =
             """
