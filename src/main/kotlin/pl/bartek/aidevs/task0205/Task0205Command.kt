@@ -4,32 +4,27 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import org.springframework.ai.chat.client.ChatClient
-import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor
-import org.springframework.ai.chat.model.ChatModel
-import org.springframework.ai.chat.prompt.ChatOptions
-import org.springframework.ai.ollama.OllamaChatModel
-import org.springframework.ai.ollama.api.OllamaOptions
-import org.springframework.ai.openai.OpenAiChatModel
-import org.springframework.ai.openai.OpenAiChatOptions
-import org.springframework.ai.openai.api.OpenAiApi
+import org.springframework.ai.chat.messages.SystemMessage
+import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.UrlResource
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
-import pl.bartek.aidevs.AiModelVendor
 import pl.bartek.aidevs.TaskId
+import pl.bartek.aidevs.ansiFormattedAi
 import pl.bartek.aidevs.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
+import pl.bartek.aidevs.courseapi.Task
 import pl.bartek.aidevs.print
 import pl.bartek.aidevs.println
+import pl.bartek.aidevs.text.TextService
 import pl.bartek.aidevs.transcript.FileToTranscribe
 import pl.bartek.aidevs.transcript.TranscriptService
+import pl.bartek.aidevs.transcript.WhisperLanguage.POLISH
 import pl.bartek.aidevs.vision.ImageFileToView
 import pl.bartek.aidevs.vision.VisionService
-import java.nio.file.Files
-import java.nio.file.Paths
 
 @Command(
     group = "task",
@@ -43,10 +38,10 @@ class Task0205Command(
     @Value("\${aidevs.task.0205.article-url}") private val articleUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
+    private val textService: TextService,
     private val transcriptService: TranscriptService,
     private val visionService: VisionService,
 ) {
-
     @Command(
         command = ["0205"],
         description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s02e05-multimodalnosc-w-praktyce",
@@ -72,9 +67,12 @@ class Task0205Command(
             figure.replaceWith(
                 Element("p").text(
                     """
-                    IMAGE ${imageResource.filename} DESCRIPTION: $imageDescription
-                    IMAGE ${imageResource.filename} CAPTION: $caption
-                    """.trimIndent(),
+                    |IMAGE ${imageResource.filename} DESCRIPTION:
+                    |```
+                    |${imageDescription.trim()}
+                    |```
+                    |IMAGE ${imageResource.filename} CAPTION: `${caption.trim()}`
+                    """.trimMargin(),
                 ),
             )
         }
@@ -84,17 +82,47 @@ class Task0205Command(
             val audioUrl =
                 audio.selectFirst("source")?.attr("abs:src") ?: throw IllegalStateException("Unable to find audio source")
             val audioResource = UrlResource(audioUrl)
-            val recording = transcriptService.transcribe(FileToTranscribe(audioResource), TaskId.TASK_0205)
+            val recording = transcriptService.transcribe(FileToTranscribe(audioResource, language = POLISH), TaskId.TASK_0205)
             audio.replaceWith(
                 Element("p").text(
                     """
-                    AUDIO ${audioResource.filename} TRANSCRIPTION: ${recording.transcript}
-                    """.trimIndent(),
+                    |AUDIO ${audioResource.filename} TRANSCRIPTION:
+                    |```
+                    |${recording.transcript.trim()}
+                    |```
+                    """.trimMargin(),
                 ),
             )
         }
 
-        println(article)
+        article.selectFirst(".chicago-bibliography")?.previousElementSibling()?.remove()
+        article.selectFirst(".chicago-bibliography")?.remove()
+        val articleText =
+            article
+                .wholeText()
+                .trim()
+                .split("\n")
+                .joinToString("\n") { it.trim() }
+
+        terminal.println("Article:".ansiFormattedSecondaryInfoTitle())
+        terminal.println(articleText.ansiFormattedSecondaryInfo())
+
+        val answers =
+            questions.mapValues { entry ->
+                terminal.print("AI response to ${entry.key}, ${entry.value}: ".ansiFormattedAi())
+                val response =
+                    textService.sendToChat(
+                        listOf(
+                            SystemMessage("Answer short and concisely to user's question about below article.\n$articleText"),
+                            UserMessage(entry.value),
+                        ),
+                    ) { terminal.print(it) }
+                terminal.println()
+                response
+            }
+
+        val aiDevsAnswer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.ARXIV, answers))
+        terminal.println(aiDevsAnswer)
     }
 
     private fun fetchInputData(): Map<String, String> {
