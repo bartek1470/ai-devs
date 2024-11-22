@@ -9,6 +9,7 @@ import pl.bartek.aidevs.TaskId
 import pl.bartek.aidevs.task0201.Recording
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.notExists
 
 private const val AUDIO_TRANSCRIPTION_SUB_DIRECTORY = "audio-transcript"
@@ -16,7 +17,8 @@ private const val AUDIO_TRANSCRIPTION_SUB_DIRECTORY = "audio-transcript"
 @Service
 class TranscriptService(
     @Value("\${aidevs.cache-dir}") private val cacheDir: Path,
-    aiModelVendor: AiModelVendor,
+    private val aiModelVendor: AiModelVendor,
+    @Value("\${aidevs.local.ollama.unload-before-whisper}") private val unloadOllamaBeforeWhisper: Boolean,
 ) {
     // TODO [bartek1470] second option -> OpenAiAudioTranscriptionModel - via OpenAI API
     // TODO [bartek1470] third option -> https://github.com/ggerganov/whisper.cpp
@@ -27,7 +29,7 @@ class TranscriptService(
     ): Recording {
         val audioFile = cacheDir.resolve(taskId.cacheFolderName()).resolve(file.filename)
         val audioFileTranscription =
-            audioFile.parent.resolve(AUDIO_TRANSCRIPTION_SUB_DIRECTORY).resolve("${file.filename}.txt")
+            audioFile.parent.resolve(AUDIO_TRANSCRIPTION_SUB_DIRECTORY).resolve("${audioFile.nameWithoutExtension}.txt")
         Files.createDirectories(audioFileTranscription.parent)
 
         if (audioFileTranscription.notExists()) {
@@ -49,6 +51,10 @@ class TranscriptService(
         file: FileToTranscribe,
         outputDirectory: Path,
     ) {
+        if (unloadOllamaBeforeWhisper) {
+            aiModelVendor.unloadOllamaModels()
+        }
+
         try {
             val language = file.language ?: WhisperLanguage.ENGLISH
             val process =

@@ -23,6 +23,10 @@ spring:
           model: ${OLLAMA_DEFAULT_MODEL:llama3.2:3b}
 
 aidevs:
+  local:
+    ollama:
+      possible-models: llama3.2:1b,llama3.2:3b,gemma2:2b,llava:7b,phi3:3.8b
+      unload-before-whisper: true
   cache-dir: .cache/ai-devs/
   api-key: ${AIDEVS_APIKEY}
   submit-flag-url: ${AIDEVS_SUBMITFLAGURL}
