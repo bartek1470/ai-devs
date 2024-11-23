@@ -9,7 +9,7 @@ spring:
     interactive:
       enabled: false
     history:
-      name: ${spring.application.name}.history.log
+      name: ${logging.file.path}/${spring.application.name}.history.log
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -69,7 +69,8 @@ aidevs:
 
 logging:
   file:
-    name: ${spring.application.name}.log
+    path: ./logs
+    name: ${logging.file.path}/${spring.application.name}.log
   pattern:
     console: "" # disable console logging without logback.xml
   level:
