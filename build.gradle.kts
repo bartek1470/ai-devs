@@ -46,7 +46,6 @@ dependencies {
     implementation(libs.spring.ai.ollama)
     implementation(libs.spring.shell.starter)
     implementation(libs.kotlin.logging)
-    developmentOnly(libs.spring.boot.devtools)
     testImplementation(libs.spring.boot.test.starter)
     testImplementation(libs.kotlin.test.junit5)
     testRuntimeOnly(libs.junit.platformLauncher)
