@@ -10,6 +10,7 @@ spring-ai = "1.0.0-M3"
 spring-boot = "3.3.5"
 spring-dependencyManagement = "1.1.6"
 spring-shell = "3.3.3"
+zip4j = "2.11.5"
 
 [libraries]
 apache-commons-codec = { group = "commons-codec", name = "commons-codec", version.ref = "apache-commons" }
@@ -23,10 +24,10 @@ kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit
 spring-ai-bom = { group = "org.springframework.ai", name = "spring-ai-bom", version.ref = "spring-ai" }
 spring-ai-ollama = { group = "org.springframework.ai", name = "spring-ai-ollama" }
 spring-ai-openai-starter = { group = "org.springframework.ai", name = "spring-ai-openai-spring-boot-starter" }
-spring-boot-devtools = { group = "org.springframework.boot", name = "spring-boot-devtools" }
 spring-boot-test-starter = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
 spring-shell-bom = { group = "org.springframework.shell", name = "spring-shell-dependencies", version.ref = "spring-shell" }
 spring-shell-starter = { group = "org.springframework.shell", name = "spring-shell-starter" }
+zip4j = {group = "net.lingala.zip4j", name = "zip4j", version.ref = "zip4j"}
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

@@ -1,6 +1,7 @@
 package pl.bartek.aidevs
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.lingala.zip4j.ZipFile
 import org.apache.commons.codec.binary.Base32
 import org.jline.terminal.Terminal
 import org.springframework.boot.ansi.AnsiBackground
@@ -28,28 +29,11 @@ fun String.removeExtraWhitespaces() =
         .joinToString("\n") { it.trim() }
 
 fun Path.unzip(destinationPath: Path) {
-    Files.createDirectories(destinationPath)
+    unzip(destinationPath, null)
+}
 
-    Files.newInputStream(this).use { inputStream ->
-        ZipInputStream(inputStream).use { zipInputStream ->
-            var entry = zipInputStream.nextEntry
-            while (entry != null) {
-                val entryPath = destinationPath.resolve(entry.name)
-                log.debug { "Extracting ${entryPath.toAbsolutePath()}" }
-                if (entry.isDirectory) {
-                    Files.createDirectories(entryPath)
-                } else {
-                    Files.createDirectories(entryPath.parent)
-                    Files.newOutputStream(entryPath).use { outputStream ->
-                        val content = zipInputStream.readAllBytes()
-                        outputStream.write(content)
-                    }
-                }
-                zipInputStream.closeEntry()
-                entry = zipInputStream.nextEntry
-            }
-        }
-    }
+fun Path.unzip(destinationPath: Path, password: CharArray?) {
+    ZipFile(toFile(), password).extractAll(destinationPath.toAbsolutePath().toString())
 }
 
 fun String.ansiFormatted(
