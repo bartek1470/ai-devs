@@ -10,4 +10,5 @@ enum class Task(
     ROBOT_ID("robotid"),
     KATEGORIE("kategorie"),
     ARXIV("arxiv"),
+    DOKUMENTY("dokumenty"),
 }

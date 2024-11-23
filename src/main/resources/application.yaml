@@ -63,6 +63,9 @@ aidevs:
       data-url: ${AIDEVS_TASK_0205_DATAURL}
       answer-url: ${AIDEVS_TASK_0205_ANSWERURL}
       article-url: ${AIDEVS_TASK_0205_ARTICLEURL}
+    0301:
+      data-url: ${AIDEVS_TASK_0301_DATAURL}
+      answer-url: ${AIDEVS_TASK_0301_ANSWERURL}
 
 logging:
   file:
