@@ -38,6 +38,7 @@ dependencyManagement {
 }
 
 dependencies {
+    implementation(libs.apache.commons.codec)
     implementation(libs.jsoup)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.kotlin)

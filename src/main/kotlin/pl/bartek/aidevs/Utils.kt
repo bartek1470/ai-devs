@@ -1,6 +1,7 @@
 package pl.bartek.aidevs
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.apache.commons.codec.binary.Base32
 import org.jline.terminal.Terminal
 import org.springframework.boot.ansi.AnsiBackground
 import org.springframework.boot.ansi.AnsiColor
@@ -9,6 +10,7 @@ import org.springframework.boot.ansi.AnsiStyle
 import pl.bartek.aidevs.courseapi.AiDevsAnswerResponse
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.zip.ZipInputStream
 
@@ -103,4 +105,10 @@ fun Terminal.println(answerResponse: AiDevsAnswerResponse) {
 fun Terminal.print(str: String) {
     writer().print(str)
     flush()
+}
+
+fun String.sha256Base32(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    val hash = digest.digest(encodeToByteArray())
+    return Base32().encodeAsString(hash)
 }

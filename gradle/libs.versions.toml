@@ -1,5 +1,7 @@
 [versions]
+apache-commons = "1.17.1"
 java = "21"
+jsoup = "1.18.1"
 kotlin = "1.9.25"
 kotlin-logging = "7.0.0"
 kotlin-spring = "1.9.25"
@@ -8,9 +10,9 @@ spring-ai = "1.0.0-M3"
 spring-boot = "3.3.5"
 spring-dependencyManagement = "1.1.6"
 spring-shell = "3.3.3"
-jsoup = "1.18.1"
 
 [libraries]
+apache-commons-codec = { group = "commons-codec", name = "commons-codec", version.ref = "apache-commons" }
 jackson-dataformat-xml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-xml" }
 jackson-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
