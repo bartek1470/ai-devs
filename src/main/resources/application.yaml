@@ -12,21 +12,24 @@ spring:
       name: ${logging.file.path}/${spring.application.name}.history.log
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY}
       chat:
-        options:
-          model: ${OPENAI_DEFAULT_MODEL:gpt-4o-mini}
+        enabled: false
+      audio:
+        transcription:
+          enabled: false
+        speech:
+          enabled: false
+      embedding:
+        enabled: false
+      image:
+        enabled: false
     ollama:
-      base-url: ${OLLAMA_URL:http://localhost:11434}
       chat:
-        options:
-          model: ${OLLAMA_DEFAULT_MODEL:llama3.2:3b}
+        enabled: false
+      embedding:
+        enabled: false
 
 aidevs:
-  local:
-    ollama:
-      possible-models: llama3.2:1b,llama3.2:3b,gemma2:2b,llava:7b,phi3:3.8b
-      unload-before-whisper: true
   cache-dir: .cache/ai-devs/
   api-key: ${AIDEVS_APIKEY}
   submit-flag-url: ${AIDEVS_SUBMITFLAGURL}
@@ -36,9 +39,9 @@ aidevs:
       answer-url: ${AIDEVS_TASK_POLIGON_ANSWERURL}
     0101:
       robot-system:
-          url: ${AIDEVS_TASK_0101_ROBOTSYSTEM_URL}
-          username: ${AIDEVS_TASK_0101_ROBOTSYSTEM_USERNAME}
-          password: ${AIDEVS_TASK_0101_ROBOTSYSTEM_PASSWORD}
+        url: ${AIDEVS_TASK_0101_ROBOTSYSTEM_URL}
+        username: ${AIDEVS_TASK_0101_ROBOTSYSTEM_USERNAME}
+        password: ${AIDEVS_TASK_0101_ROBOTSYSTEM_PASSWORD}
     0102:
       conversation-url: ${AIDEVS_TASK_0102_CONVERSATIONURL}
     0103:
@@ -66,6 +69,10 @@ aidevs:
     0301:
       data-url: ${AIDEVS_TASK_0301_DATAURL}
       answer-url: ${AIDEVS_TASK_0301_ANSWERURL}
+    0302:
+      data-url: ${AIDEVS_TASK_0302_DATAURL}
+      data-password: ${AIDEVS_TASK_0302_DATAPASSWORD}
+      answer-url: ${AIDEVS_TASK_0302_ANSWERURL}
 
 logging:
   file:
@@ -84,4 +91,4 @@ logging:
     pl:
       bartek:
         aidevs:
-          LoggingRestClientInterceptor: debug
+          pl.bartek.aidevs.config.LoggingRestClientInterceptor: debug

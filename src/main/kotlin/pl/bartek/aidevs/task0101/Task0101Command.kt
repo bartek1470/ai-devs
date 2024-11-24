@@ -3,6 +3,7 @@ package pl.bartek.aidevs.task0101
 import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.springframework.ai.chat.client.ChatClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -11,13 +12,12 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.ansiFormattedAi
-import pl.bartek.aidevs.ansiFormattedError
-import pl.bartek.aidevs.ansiFormattedSuccess
-import pl.bartek.aidevs.extractAiDevsFlag
-import pl.bartek.aidevs.println
-import pl.bartek.aidevs.removeExtraWhitespaces
+import pl.bartek.aidevs.util.ansiFormattedAi
+import pl.bartek.aidevs.util.ansiFormattedError
+import pl.bartek.aidevs.util.ansiFormattedSuccess
+import pl.bartek.aidevs.util.extractAiDevsFlag
+import pl.bartek.aidevs.util.println
+import pl.bartek.aidevs.util.removeExtraWhitespaces
 
 @Command(
     group = "task",
@@ -28,11 +28,9 @@ class Task0101Command(
     @Value("\${aidevs.task.0101.robot-system.url}") private val robotSystemUrl: String,
     @Value("\${aidevs.task.0101.robot-system.username}") private val robotSystemUsername: String,
     @Value("\${aidevs.task.0101.robot-system.password}") private val robotSystemPassword: String,
-    aiModelVendor: AiModelVendor,
     private val restClient: RestClient,
+    private val chatClient: ChatClient,
 ) {
-    private val chatClient = aiModelVendor.defaultChatClient()
-
     @Command(
         command = ["0101"],
         description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s01e01-interakcja-z-duzym-modelem-jezykowym",

@@ -2,17 +2,9 @@ package pl.bartek.aidevs.task0204
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
-import org.springframework.ai.chat.client.ChatClient
-import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor
+import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.chat.model.ChatModel
-import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.model.Media
-import org.springframework.ai.ollama.OllamaChatModel
-import org.springframework.ai.ollama.api.OllamaOptions
-import org.springframework.ai.openai.OpenAiChatModel
-import org.springframework.ai.openai.OpenAiChatOptions
-import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
@@ -20,25 +12,24 @@ import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.TaskId
-import pl.bartek.aidevs.ansiFormattedAi
-import pl.bartek.aidevs.ansiFormattedSecondaryInfo
-import pl.bartek.aidevs.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
-import pl.bartek.aidevs.print
-import pl.bartek.aidevs.println
 import pl.bartek.aidevs.transcript.FileToTranscribe
 import pl.bartek.aidevs.transcript.TranscriptService
 import pl.bartek.aidevs.transcript.WhisperLanguage
-import pl.bartek.aidevs.unzip
+import pl.bartek.aidevs.util.ansiFormattedAi
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.util.print
+import pl.bartek.aidevs.util.println
+import pl.bartek.aidevs.util.unzip
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.stream.Collectors
 import java.util.stream.Stream
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
@@ -54,42 +45,10 @@ class Task0204Command(
     @Value("\${aidevs.task.0204.answer-url}") private val answerUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
-    openAiChatModel: OpenAiChatModel,
-    ollamaChatModel: OllamaChatModel,
-    aiModelVendor: AiModelVendor,
+    private val chatService: ChatService,
     private val transcriptService: TranscriptService,
 ) {
     private val cacheDir = Paths.get(cacheDir, TaskId.TASK_0204.cacheFolderName())
-
-    private val chatModel: ChatModel = if (aiModelVendor.isOllamaPreferred()) ollamaChatModel else openAiChatModel
-    private val chatClient =
-        ChatClient
-            .builder(chatModel)
-            .defaultAdvisors(SimpleLoggerAdvisor())
-            .build()
-
-    private val textChatOptions: ChatOptions =
-        if (aiModelVendor.isOllamaPreferred()) {
-            OllamaOptions
-                .builder()
-                .withModel("llama3.2:3b")
-                .build()
-        } else {
-            OpenAiChatOptions
-                .builder()
-                .withModel(OpenAiApi.ChatModel.GPT_4_O)
-                .build()
-        }
-
-    private val imageChatOptions: ChatOptions =
-        if (aiModelVendor.isOllamaPreferred()) {
-            OllamaOptions
-                .builder()
-                .withModel("llava:7b")
-                .build()
-        } else {
-            textChatOptions
-        }
 
     private val prompt =
         """
@@ -157,32 +116,23 @@ class Task0204Command(
     }
 
     private fun processImage(imageResource: Resource): String =
-        chatClient
-            .prompt()
-            .options(imageChatOptions)
-            .messages(
+        chatService.sendToChat(
+            listOf(
+                SystemMessage(prompt),
                 UserMessage(
                     "",
                     Media(MediaType.IMAGE_PNG, imageResource),
                 ),
-            ).system(prompt)
-            .stream()
-            .content()
-            .doOnNext { terminal.print(it) }
-            .collect(Collectors.joining(""))
-            .block() ?: throw IllegalStateException("Cannot get chat response")
+            ),
+        ) { terminal.print(it) }
 
     private fun processText(textResource: Resource): String =
-        chatClient
-            .prompt()
-            .options(textChatOptions)
-            .system(prompt)
-            .messages(UserMessage(textResource.getContentAsString(StandardCharsets.UTF_8)))
-            .stream()
-            .content()
-            .doOnNext { terminal.print(it) }
-            .collect(Collectors.joining(""))
-            .block() ?: throw IllegalStateException("Cannot get chat response")
+        chatService.sendToChat(
+            listOf(
+                SystemMessage(prompt),
+                UserMessage(textResource.getContentAsString(StandardCharsets.UTF_8)),
+            ),
+        ) { terminal.println(it) }
 
     private fun prepareFiles(file: Path): Stream<Note> =
         when (file.extension) {

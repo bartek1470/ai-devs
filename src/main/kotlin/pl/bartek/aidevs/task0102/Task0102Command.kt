@@ -1,19 +1,19 @@
 package pl.bartek.aidevs.task0102
 
 import org.jline.terminal.Terminal
+import org.springframework.ai.chat.client.ChatClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
-import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.ansiFormattedAi
-import pl.bartek.aidevs.ansiFormattedError
-import pl.bartek.aidevs.ansiFormattedHuman
-import pl.bartek.aidevs.ansiFormattedSecondaryInfo
-import pl.bartek.aidevs.ansiFormattedSuccess
-import pl.bartek.aidevs.isAiDevsFlag
-import pl.bartek.aidevs.print
-import pl.bartek.aidevs.println
+import pl.bartek.aidevs.util.ansiFormattedAi
+import pl.bartek.aidevs.util.ansiFormattedError
+import pl.bartek.aidevs.util.ansiFormattedHuman
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.util.ansiFormattedSuccess
+import pl.bartek.aidevs.util.isAiDevsFlag
+import pl.bartek.aidevs.util.print
+import pl.bartek.aidevs.util.println
 
 @Command(
     group = "task",
@@ -22,10 +22,9 @@ import pl.bartek.aidevs.println
 class Task0102Command(
     private val terminal: Terminal,
     @Value("\${aidevs.task.0102.conversation-url}") private val conversationUrl: String,
-    aiModelVendor: AiModelVendor,
     private val restClient: RestClient,
+    private val chatClient: ChatClient,
 ) {
-    private val chatClient = aiModelVendor.defaultChatClient()
     private var patrollingRobotConversation: PatrollingRobotConversation = PatrollingRobotConversation()
 
     @Command(

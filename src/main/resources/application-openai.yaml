@@ -1,0 +1,19 @@
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        enabled: true
+        options:
+          model: ${OPENAI_DEFAULT_CHAT_MODEL:gpt-4o-mini}
+      image:
+        enabled: true
+        options:
+          model: ${OPENAI_DEFAULT_IMAGE_GENERATION_MODEL:dall-e-2}
+      audio:
+        transcription:
+          enabled: true
+          options:
+            model: ${OPENAI_DEFAULT_AUDIO_TRANSCRIPTION_MODEL:whisper-1}
+      embedding:
+        enabled: true

@@ -1,4 +1,4 @@
-package pl.bartek.aidevs
+package pl.bartek.aidevs.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

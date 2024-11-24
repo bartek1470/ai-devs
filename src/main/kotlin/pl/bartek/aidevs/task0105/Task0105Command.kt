@@ -1,6 +1,7 @@
 package pl.bartek.aidevs.task0105
 
 import org.jline.terminal.Terminal
+import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.ChatOptions
@@ -9,14 +10,13 @@ import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.Porta
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
-import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.ansiFormattedAi
-import pl.bartek.aidevs.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
-import pl.bartek.aidevs.print
-import pl.bartek.aidevs.println
+import pl.bartek.aidevs.util.ansiFormattedAi
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.util.print
+import pl.bartek.aidevs.util.println
 import java.util.stream.Collectors
 
 @Command(
@@ -30,9 +30,8 @@ class Task0105Command(
     @Value("\${aidevs.task.0105.answer-url}") private val answerUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
-    aiModelVendor: AiModelVendor,
+    private val chatClient: ChatClient,
 ) {
-    private val chatClient = aiModelVendor.defaultChatClient()
     private val chatOptions: ChatOptions =
         PortableFunctionCallingOptions
             .builder()

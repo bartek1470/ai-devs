@@ -1,4 +1,4 @@
-package pl.bartek.aidevs
+package pl.bartek.aidevs.course
 
 enum class TaskId {
     TASK_0101,

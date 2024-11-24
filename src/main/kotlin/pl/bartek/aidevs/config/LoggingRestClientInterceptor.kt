@@ -1,4 +1,4 @@
-package pl.bartek.aidevs
+package pl.bartek.aidevs.config
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.HttpHeaders

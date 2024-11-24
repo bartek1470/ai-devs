@@ -11,8 +11,8 @@ import org.springframework.web.client.body
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
-import pl.bartek.aidevs.println
-import pl.bartek.aidevs.removeExtraWhitespaces
+import pl.bartek.aidevs.util.println
+import pl.bartek.aidevs.util.removeExtraWhitespaces
 
 @Command(
     group = "task",

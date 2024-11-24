@@ -1,4 +1,4 @@
-package pl.bartek.aidevs
+package pl.bartek.aidevs.util
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.lingala.zip4j.ZipFile
@@ -9,11 +9,9 @@ import org.springframework.boot.ansi.AnsiColor
 import org.springframework.boot.ansi.AnsiOutput
 import org.springframework.boot.ansi.AnsiStyle
 import pl.bartek.aidevs.courseapi.AiDevsAnswerResponse
-import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.Locale
-import java.util.zip.ZipInputStream
 
 private val log = KotlinLogging.logger {}
 private val AI_DEVS_FLAG_REGEX = "\\{\\{FLG:(.*)}}".toRegex()
@@ -32,7 +30,10 @@ fun Path.unzip(destinationPath: Path) {
     unzip(destinationPath, null)
 }
 
-fun Path.unzip(destinationPath: Path, password: CharArray?) {
+fun Path.unzip(
+    destinationPath: Path,
+    password: CharArray?,
+) {
     ZipFile(toFile(), password).extractAll(destinationPath.toAbsolutePath().toString())
 }
 

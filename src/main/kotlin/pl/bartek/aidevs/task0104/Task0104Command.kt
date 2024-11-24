@@ -11,9 +11,9 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.ansiFormattedError
-import pl.bartek.aidevs.ansiFormattedSuccess
-import pl.bartek.aidevs.println
+import pl.bartek.aidevs.util.ansiFormattedError
+import pl.bartek.aidevs.util.ansiFormattedSuccess
+import pl.bartek.aidevs.util.println
 
 @Command(
     group = "task",

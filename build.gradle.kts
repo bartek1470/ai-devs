@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.jackson.kotlin)
     implementation(libs.jackson.dataformat.xml)
     implementation(libs.spring.ai.openai.starter)
+    implementation(libs.spring.ai.qdrant.starter)
     implementation(libs.spring.ai.ollama)
     implementation(libs.spring.shell.starter)
     implementation(libs.kotlin.logging)

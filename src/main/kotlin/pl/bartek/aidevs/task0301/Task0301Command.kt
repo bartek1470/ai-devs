@@ -16,15 +16,15 @@ import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.TaskId
-import pl.bartek.aidevs.ansiFormattedAi
+import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
-import pl.bartek.aidevs.print
-import pl.bartek.aidevs.println
-import pl.bartek.aidevs.text.TextService
-import pl.bartek.aidevs.unzip
+import pl.bartek.aidevs.util.ansiFormattedAi
+import pl.bartek.aidevs.util.print
+import pl.bartek.aidevs.util.println
+import pl.bartek.aidevs.util.unzip
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.extension
@@ -42,7 +42,7 @@ class Task0301Command(
     @Value("\${aidevs.task.0301.answer-url}") private val answerUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
-    private val textService: TextService,
+    private val chatService: ChatService,
 ) {
     private val cacheDir = cacheDir.resolve(TaskId.TASK_0301.cacheFolderName())
 
@@ -107,7 +107,7 @@ class Task0301Command(
                 .map { report ->
                     terminal.print("AI generated words for file ${report.first.fileName}: ".ansiFormattedAi())
                     val response =
-                        textService.sendToChat(
+                        chatService.sendToChat(
                             listOf(
                                 SystemMessage(prompt),
                                 UserMessage(

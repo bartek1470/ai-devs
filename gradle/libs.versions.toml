@@ -24,6 +24,7 @@ kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit
 spring-ai-bom = { group = "org.springframework.ai", name = "spring-ai-bom", version.ref = "spring-ai" }
 spring-ai-ollama = { group = "org.springframework.ai", name = "spring-ai-ollama" }
 spring-ai-openai-starter = { group = "org.springframework.ai", name = "spring-ai-openai-spring-boot-starter" }
+spring-ai-qdrant-starter = { group = "org.springframework.ai", name = "spring-ai-qdrant-store-spring-boot-starter" }
 spring-boot-test-starter = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
 spring-shell-bom = { group = "org.springframework.shell", name = "spring-shell-dependencies", version.ref = "spring-shell" }
 spring-shell-starter = { group = "org.springframework.shell", name = "spring-shell-starter" }

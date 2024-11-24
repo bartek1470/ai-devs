@@ -2,23 +2,21 @@ package pl.bartek.aidevs.task0202
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
+import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.model.Media
-import org.springframework.ai.ollama.api.OllamaOptions
-import org.springframework.ai.openai.OpenAiChatOptions
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
-import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.TaskId
-import pl.bartek.aidevs.ansiFormatted
-import pl.bartek.aidevs.ansiFormattedAi
-import pl.bartek.aidevs.print
-import pl.bartek.aidevs.println
+import pl.bartek.aidevs.course.TaskId
+import pl.bartek.aidevs.util.ansiFormatted
+import pl.bartek.aidevs.util.ansiFormattedAi
+import pl.bartek.aidevs.util.print
+import pl.bartek.aidevs.util.println
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
@@ -30,19 +28,9 @@ import java.util.stream.Collectors
 class Task0202Command(
     private val terminal: Terminal,
     @Value("\${aidevs.cache-dir}") cacheDir: String,
-    aiModelVendor: AiModelVendor,
+    private val chatClient: ChatClient,
 ) {
     private val cacheDir = Paths.get(cacheDir, TaskId.TASK_0202.cacheFolderName())
-    private val chatClient = aiModelVendor.defaultChatClient()
-    private val imageChatOptions =
-        if (aiModelVendor.isOllamaPreferred()) {
-            OllamaOptions
-                .builder()
-                .withModel("llava:7b")
-                .build()
-        } else {
-            OpenAiChatOptions.builder().build()
-        }
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -78,7 +66,6 @@ class Task0202Command(
                                         Media(MediaType.IMAGE_JPEG, FileSystemResource(cacheDir.resolve("$mapNumber.jpeg"))),
                                     ),
                                 ),
-                                imageChatOptions,
                             ),
                         ).stream()
                         .content()

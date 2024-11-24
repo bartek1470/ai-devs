@@ -7,13 +7,15 @@ import org.springframework.ai.openai.OpenAiImageModel
 import org.springframework.ai.openai.OpenAiImageOptions
 import org.springframework.ai.openai.api.OpenAiImageApi.ImageModel
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
-import pl.bartek.aidevs.println
+import pl.bartek.aidevs.util.println
 
+@Profile("openai")
 @Command(
     group = "task",
     command = ["task"],

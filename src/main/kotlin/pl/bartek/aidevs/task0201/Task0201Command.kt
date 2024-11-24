@@ -7,29 +7,29 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
+import org.springframework.ai.chat.client.ChatClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.AiModelVendor
-import pl.bartek.aidevs.TaskId
-import pl.bartek.aidevs.ansiFormattedAi
-import pl.bartek.aidevs.ansiFormattedError
-import pl.bartek.aidevs.ansiFormattedSecondaryInfo
-import pl.bartek.aidevs.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
-import pl.bartek.aidevs.print
-import pl.bartek.aidevs.println
-import pl.bartek.aidevs.removeExtraWhitespaces
-import pl.bartek.aidevs.titleCase
 import pl.bartek.aidevs.transcript.FileToTranscribe
 import pl.bartek.aidevs.transcript.TranscriptService
 import pl.bartek.aidevs.transcript.WhisperLanguage
-import pl.bartek.aidevs.unzip
+import pl.bartek.aidevs.util.ansiFormattedAi
+import pl.bartek.aidevs.util.ansiFormattedError
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.util.print
+import pl.bartek.aidevs.util.println
+import pl.bartek.aidevs.util.removeExtraWhitespaces
+import pl.bartek.aidevs.util.titleCase
+import pl.bartek.aidevs.util.unzip
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -48,11 +48,10 @@ class Task0201Command(
     @Value("\${aidevs.task.0201.answer-url}") private val answerUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
-    aiModelVendor: AiModelVendor,
+    private val chatClient: ChatClient,
     private val transcriptService: TranscriptService,
 ) {
     private val cacheDir = Paths.get(cacheDir, TaskId.TASK_0201.cacheFolderName())
-    private val chatClient = aiModelVendor.defaultChatClient()
 
     init {
         Files.createDirectories(this.cacheDir)

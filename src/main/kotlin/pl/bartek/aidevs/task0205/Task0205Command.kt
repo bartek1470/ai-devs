@@ -6,25 +6,25 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.model.Media
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.UrlResource
+import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
-import pl.bartek.aidevs.TaskId
-import pl.bartek.aidevs.ansiFormattedAi
-import pl.bartek.aidevs.ansiFormattedSecondaryInfo
-import pl.bartek.aidevs.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
 import pl.bartek.aidevs.courseapi.AiDevsApiClient
 import pl.bartek.aidevs.courseapi.Task
-import pl.bartek.aidevs.print
-import pl.bartek.aidevs.println
-import pl.bartek.aidevs.text.TextService
 import pl.bartek.aidevs.transcript.FileToTranscribe
 import pl.bartek.aidevs.transcript.TranscriptService
 import pl.bartek.aidevs.transcript.WhisperLanguage.POLISH
-import pl.bartek.aidevs.vision.ImageFileToView
-import pl.bartek.aidevs.vision.VisionService
+import pl.bartek.aidevs.util.ansiFormattedAi
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.util.print
+import pl.bartek.aidevs.util.println
 
 @Command(
     group = "task",
@@ -38,9 +38,8 @@ class Task0205Command(
     @Value("\${aidevs.task.0205.article-url}") private val articleUrl: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
-    private val textService: TextService,
+    private val chatService: ChatService,
     private val transcriptService: TranscriptService,
-    private val visionService: VisionService,
 ) {
     @Command(
         command = ["0205"],
@@ -58,11 +57,9 @@ class Task0205Command(
                 figure.selectFirst("img")?.attr("abs:src") ?: throw IllegalStateException("Unable to find figure image")
             val imageResource = UrlResource(imageUrl)
             val imageDescription =
-                visionService.describeImage(
-                    ImageFileToView(imageResource),
-                    taskId = TaskId.TASK_0205,
-                    onPartialResponseReceived = { terminal.print(it) },
-                )
+                chatService.sendToChat(
+                    listOf(UserMessage("Describe the image", Media(MediaType.IMAGE_PNG, imageResource))),
+                ) { terminal.print(it) }
             val caption = figure.selectFirst("figcaption")?.text() ?: ""
             figure.replaceWith(
                 Element("p").text(
@@ -111,7 +108,7 @@ class Task0205Command(
             questions.mapValues { entry ->
                 terminal.print("AI response to ${entry.key}, ${entry.value}: ".ansiFormattedAi())
                 val response =
-                    textService.sendToChat(
+                    chatService.sendToChat(
                         listOf(
                             SystemMessage("Answer short and concisely to user's question about below article.\n$articleText"),
                             UserMessage(entry.value),

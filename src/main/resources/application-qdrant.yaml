@@ -1,0 +1,9 @@
+spring:
+  ai:
+    vectorstore:
+      qdrant:
+        host: ${QDRANT_HOST}
+        port: ${QDRANT_PORT:6333}
+        api-key: ${QDRANT_APIKEY}
+        collection-name: ${QDRANT_COLLECTIONNAME:ai-devs}
+        use-tls: ${QDRANT_USETLS:true}
