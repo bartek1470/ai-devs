@@ -2,9 +2,7 @@ package pl.bartek.aidevs.task0302
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
-import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.context.annotation.Profile
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
@@ -19,7 +17,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.nameWithoutExtension
 
- @Profile("qdrant")
+@Profile("qdrant")
 @Command(
     group = "task",
     command = ["task"],
