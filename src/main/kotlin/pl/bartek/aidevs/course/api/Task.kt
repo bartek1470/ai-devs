@@ -11,4 +11,5 @@ enum class Task(
     KATEGORIE("kategorie"),
     ARXIV("arxiv"),
     DOKUMENTY("dokumenty"),
+    WEKTORY("wektory"),
 }

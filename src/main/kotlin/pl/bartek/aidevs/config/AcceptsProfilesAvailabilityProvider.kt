@@ -11,8 +11,8 @@ class AcceptsProfilesAvailabilityProvider(
 ) : AvailabilityProvider {
     override fun get(): Availability {
         if (environment.acceptsProfiles(profiles)) {
-            Availability.available()
+            return Availability.available()
         }
-        return Availability.unavailable("Invalid profiles. Profiles should match: $profiles")
+        return Availability.unavailable("profiles are invalid. Profiles should match: $profiles")
     }
 }

@@ -3,7 +3,8 @@ spring:
     vectorstore:
       qdrant:
         host: ${QDRANT_HOST}
-        port: ${QDRANT_PORT:6333}
+        port: ${QDRANT_PORT:6334}
         api-key: ${QDRANT_APIKEY}
         collection-name: ${QDRANT_COLLECTIONNAME:ai-devs}
         use-tls: ${QDRANT_USETLS:true}
+        initialize-schema: true
