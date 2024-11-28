@@ -39,7 +39,6 @@ class Task0302Service(
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
-    private val chatService: ChatService,
     private val vectorStore: VectorStore,
     private val qdrantClient: QdrantClient,
 ) {

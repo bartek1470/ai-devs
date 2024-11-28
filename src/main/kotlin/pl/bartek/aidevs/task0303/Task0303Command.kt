@@ -9,13 +9,13 @@ import org.springframework.shell.command.annotation.Command
 )
 class Task0303Command(
     private val terminal: Terminal,
-    private val task0303Service: Task0303Service?,
+    private val service: Task0303Service?,
 ) {
     @Command(
         command = ["0303"],
         description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s03e03-wyszukiwanie-hybrydowe",
     )
     fun run() {
-        task0303Service?.run(terminal)
+        service?.run(terminal)
     }
 }

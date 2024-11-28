@@ -10,7 +10,7 @@ import org.springframework.shell.command.annotation.CommandAvailability
 )
 class Task0302Command(
     private val terminal: Terminal,
-    private val task0302Service: Task0302Service?,
+    private val service: Task0302Service?,
 ) {
     @Command(
         command = ["0302"],
@@ -18,6 +18,6 @@ class Task0302Command(
     )
     @CommandAvailability(provider = ["qdrantProfilePresent"])
     fun run() {
-        task0302Service?.run(terminal)
+        service?.run(terminal)
     }
 }
