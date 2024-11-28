@@ -25,7 +25,7 @@ class Task0303Service(
     private val aiDevsApiClient: AiDevsApiClient,
     private val chatService: ChatService,
 ) {
-    private val cacheDir = cacheDir.resolve(TaskId.TASK_0302.cacheFolderName())
+    private val cacheDir = cacheDir.resolve(TaskId.TASK_0303.cacheFolderName())
 
     init {
         Files.createDirectories(this.cacheDir)
