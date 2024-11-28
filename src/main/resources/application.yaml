@@ -73,6 +73,9 @@ aidevs:
       data-url: ${AIDEVS_TASK_0302_DATAURL}
       data-password: ${AIDEVS_TASK_0302_DATAPASSWORD}
       answer-url: ${AIDEVS_TASK_0302_ANSWERURL}
+    0303:
+      api-url: ${AIDEVS_TASK_0303_APIURL}
+      answer-url: ${AIDEVS_TASK_0303_ANSWERURL}
 
 logging:
   file:

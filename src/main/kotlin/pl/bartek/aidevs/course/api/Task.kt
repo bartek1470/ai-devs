@@ -12,4 +12,5 @@ enum class Task(
     ARXIV("arxiv"),
     DOKUMENTY("dokumenty"),
     WEKTORY("wektory"),
+    DATABASE("database"),
 }
