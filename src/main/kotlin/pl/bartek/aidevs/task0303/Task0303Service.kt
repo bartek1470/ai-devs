@@ -4,9 +4,11 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
 import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
@@ -22,6 +24,9 @@ import java.nio.file.Path
 class Task0303Service(
     @Value("\${aidevs.cache-dir}") cacheDir: Path,
     @Value("\${aidevs.task.0303.answer-url}") private val answerUrl: String,
+    @Value("\${aidevs.api-key}") private val apiKey: String,
+    @Value("\${aidevs.task.0303.api-url}") private val apiUrl: String,
+    private val restClient: RestClient,
     private val aiDevsApiClient: AiDevsApiClient,
     private val chatService: ChatService,
 ) {
@@ -58,7 +63,13 @@ class Task0303Service(
                         """.trimIndent(),
                     ),
                 ),
-                listOf("sendDbApiRequest"),
+                listOf(
+                    DefaultFunctionCallbackBuilder()
+                        .description("Execute database query")
+                        .function("sendDbApiRequest", SendDbApiRequest(apiKey, apiUrl, restClient))
+                        .inputType(SendDbApiRequest::class.java)
+                        .build(),
+                ),
                 chatOptions = PortableFunctionCallingOptions.builder().build(),
             ) { terminal.print(it) }
         terminal.println()

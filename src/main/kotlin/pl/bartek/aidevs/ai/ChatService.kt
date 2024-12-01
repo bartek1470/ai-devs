@@ -5,12 +5,12 @@ import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.prompt.ChatOptions
+import org.springframework.ai.model.function.FunctionCallback
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.stream.Collectors
-import kotlin.io.path.exists
 
 @Service
 class ChatService(
@@ -25,19 +25,20 @@ class ChatService(
 
     fun sendToChat(
         messages: List<Message>,
-        functionBeanNames: List<String> = listOf(),
+        functions: List<FunctionCallback> = listOf(),
         chatOptions: ChatOptions? = null,
-        onPartialResponseReceived: (String) -> Unit = {},
+        streaming: Boolean = true,
+        responseReceived: (String) -> Unit = {},
     ): String {
         val cachedName = "${messages.hashCode()}.txt"
 
         val cachedPath = cacheDir.resolve(cachedName)
-        if (cachedPath.exists()) {
-            log.debug { "Using cached response $cachedName" }
-            val cachedResponse = Files.readString(cachedPath)
-            onPartialResponseReceived.invoke(cachedResponse)
-            return cachedResponse
-        }
+//        if (cachedPath.exists()) {
+//            log.debug { "Using cached response $cachedName" }
+//            val cachedResponse = Files.readString(cachedPath)
+//            onPartialResponseReceived.invoke(cachedResponse)
+//            return cachedResponse
+//        }
 
         log.debug { "Cached file $cachedName doesn't exist. Calling chat client" }
 
@@ -45,23 +46,29 @@ class ChatService(
             chatClient
                 .prompt()
                 .messages(messages)
-                .functions(*functionBeanNames.toTypedArray())
+                .functions<Any, Any>(*functions.toTypedArray())
 
         chatOptions?.also { chatRequestSpec.options(it) }
 
-        val response =
-            chatRequestSpec
-                .stream()
-                .chatResponse()
-                .doOnNext {
-                    it
-                        .content()
-                        .takeIf { it.isNotBlank() }
-                        ?.also(onPartialResponseReceived)
-                }.collect(Collectors.toList())
-                .block() ?: throw IllegalStateException("Cannot get chat response")
+        val responseContent =
+            if (streaming) {
+                val chatResponses =
+                    chatRequestSpec
+                        .stream()
+                        .chatResponse()
+                        .doOnNext {
+                            responseReceived(it.content())
+                        }.collect(Collectors.toList())
+                        .block() ?: throw IllegalStateException("Cannot get chat response")
+                chatResponses.joinToString("") { it.content() }
+            } else {
+                val chatResponse =
+                    chatRequestSpec.call().chatResponse() ?: throw IllegalStateException("Cannot get chat response")
+                val content = chatResponse.content()
+                responseReceived(content)
+                content
+            }
 
-        val responseContent = response.joinToString("") { it.content() }
         Files.writeString(cachedPath, responseContent)
         return responseContent
     }

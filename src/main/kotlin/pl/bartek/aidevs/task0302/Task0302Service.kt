@@ -12,7 +12,6 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.config.Profile.QDRANT
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.courseapi.AiDevsAnswer
