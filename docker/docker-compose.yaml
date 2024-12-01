@@ -5,7 +5,7 @@ services:
     image: ollama/ollama
     container_name: ollama
     # https://stackoverflow.com/a/78501628
-    entrypoint: "bash -c '/entrypoint.sh llama3.2:1b llama3.2:3b gemma2:2b llava:7b phi3:3.8b qwen2.5:3b qwen2.5:7b'"
+    entrypoint: "bash -c '/entrypoint.sh llama3.2:1b llama3.2:3b gemma2:2b llava:7b phi3:3.8b phi3.5:3.8b qwen2.5:3b qwen2.5:7b'"
     ports:
       - "11434:11434"
     volumes:
