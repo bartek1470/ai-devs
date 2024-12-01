@@ -98,7 +98,7 @@ fun String.stripAccents(): String = StringUtils.stripAccents(this)
 fun String.extractXmlRoot(xmlTagName: String = "result"): String? {
     val xmlStartTag = "<$xmlTagName>"
     val xmlEndTag = "</$xmlTagName>"
-    val startIndex = indexOf(xmlStartTag)
-    val endIndex = indexOf(xmlEndTag) + xmlEndTag.length
+    val startIndex = indexOf(xmlStartTag, ignoreCase = true)
+    val endIndex = indexOf(xmlEndTag, ignoreCase = true) + xmlEndTag.length
     return if (startIndex < 0 || endIndex < 0) null else substring(startIndex, endIndex)
 }
