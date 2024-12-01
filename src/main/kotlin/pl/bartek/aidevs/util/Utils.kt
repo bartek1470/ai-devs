@@ -2,7 +2,7 @@ package pl.bartek.aidevs.util
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.lingala.zip4j.ZipFile
-import org.apache.commons.codec.binary.Base32
+import org.apache.commons.lang3.StringUtils
 import org.jline.terminal.Terminal
 import org.springframework.boot.ansi.AnsiBackground
 import org.springframework.boot.ansi.AnsiColor
@@ -10,7 +10,6 @@ import org.springframework.boot.ansi.AnsiOutput
 import org.springframework.boot.ansi.AnsiStyle
 import pl.bartek.aidevs.courseapi.AiDevsAnswerResponse
 import java.nio.file.Path
-import java.security.MessageDigest
 import java.util.Locale
 
 private val log = KotlinLogging.logger {}
@@ -92,8 +91,14 @@ fun Terminal.print(str: String) {
     flush()
 }
 
-fun String.sha256Base32(): String {
-    val digest = MessageDigest.getInstance("SHA-256")
-    val hash = digest.digest(encodeToByteArray())
-    return Base32().encodeAsString(hash)
+fun String.replaceNonBreakingSpaces(): String = this.replace("\u00a0", " ")
+
+fun String.stripAccents(): String = StringUtils.stripAccents(this)
+
+fun String.extractXmlRoot(xmlTagName: String = "result"): String? {
+    val xmlStartTag = "<$xmlTagName>"
+    val xmlEndTag = "</$xmlTagName>"
+    val startIndex = indexOf(xmlStartTag)
+    val endIndex = indexOf(xmlEndTag) + xmlEndTag.length
+    return if (startIndex < 0 || endIndex < 0) null else substring(startIndex, endIndex)
 }
