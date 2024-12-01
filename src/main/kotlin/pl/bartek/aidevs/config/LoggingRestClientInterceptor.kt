@@ -16,22 +16,33 @@ class LoggingRestClientInterceptor : ClientHttpRequestInterceptor {
         body: ByteArray,
         execution: ClientHttpRequestExecution,
     ): ClientHttpResponse {
-        log.debug { "REQUEST: ${request.method} ${request.uri}" }
-        log.debug { "HEADERS:\n${request.headers.toMultilineString()}" }
-        log.debug { "BODY:\n${String(body)}" }
-
-        val response: ClientHttpResponse = execution.execute(request, body)
-
-        log.debug { "RESPONSE FROM ${request.method} ${request.uri} -> ${response.statusCode}" }
-        log.debug { "HEADERS:\n${response.headers.toMultilineString()}" }
-
-        if (request.headers.contentType?.isCompatibleWith(MediaType.APPLICATION_OCTET_STREAM) != true) {
-            log.debug { "BODY:\n${String(response.body.readAllBytes())}" }
-        } else {
-            log.debug { "BODY is binary" }
+        var response: ClientHttpResponse? = null
+        var exception: Exception? = null
+        try {
+            response = execution.execute(request, body)
+        } catch (ex: Exception) {
+            exception = ex
         }
 
-        return response
+        val isBinaryRequest = request.headers.contentType?.isCompatibleWith(MediaType.APPLICATION_OCTET_STREAM) ?: false
+        val requestBody = if (isBinaryRequest) "[BINARY]" else String(body)
+        val isBinaryResponse = response?.headers?.contentType?.isCompatibleWith(MediaType.APPLICATION_OCTET_STREAM) ?: false
+        val responseBody = if (isBinaryResponse) "[BINARY]" else response?.body?.readAllBytes()?.let { String(it) }
+        log.debug {
+            """
+            |Request: ${request.method} ${request.uri}
+            |${request.headers.toMultilineString()}
+            |
+            |$requestBody
+            |
+            |Response: ${response?.statusCode}
+            |${response?.headers?.toMultilineString()}
+            |
+            |$responseBody
+            """.trimMargin()
+        }
+
+        return response ?: throw exception!!
     }
 
     private fun HttpHeaders.toMultilineString(): String = this.toMap().entries.joinToString("\n")
