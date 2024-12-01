@@ -1,5 +1,19 @@
 spring:
   ai:
+    openai:
+      chat:
+        enabled: false
+      audio:
+        speech:
+          enabled: false
+        transcription:
+          enabled: false
+      image:
+        enabled: false
+      embedding:
+        enabled: false
+      moderation:
+        api-key: dummy
     ollama:
       base-url: ${OLLAMA_URL:http://localhost:11434}
       chat:
