@@ -76,6 +76,10 @@ aidevs:
     0303:
       api-url: ${AIDEVS_TASK_0303_APIURL}
       answer-url: ${AIDEVS_TASK_0303_ANSWERURL}
+    0304:
+      data-url: ${AIDEVS_TASK_0304_DATAURL}
+      api-url: ${AIDEVS_TASK_0304_APIURL}
+      answer-url: ${AIDEVS_TASK_0304_ANSWERURL}
 
 logging:
   file:

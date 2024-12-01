@@ -13,4 +13,5 @@ enum class Task(
     DOKUMENTY("dokumenty"),
     WEKTORY("wektory"),
     DATABASE("database"),
+    LOOP("loop"),
 }
