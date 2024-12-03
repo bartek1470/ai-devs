@@ -31,16 +31,14 @@ class LoggingRestClientInterceptor : ClientHttpRequestInterceptor {
         log.debug {
             """
             |Request: ${request.method} ${request.uri}
-            |${request.headers.toMultilineString()}
-            |
             |$requestBody
             |
             |Response: ${response?.statusCode}
-            |${response?.headers?.toMultilineString()}
-            |
             |$responseBody
             """.trimMargin()
         }
+        log.trace { "Request headers:\n${request.headers.toMultilineString()}" }
+        log.trace { "Response headers:\n${response?.headers?.toMultilineString()}" }
 
         return response ?: throw exception!!
     }
