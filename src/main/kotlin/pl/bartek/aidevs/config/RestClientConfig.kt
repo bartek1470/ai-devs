@@ -10,11 +10,15 @@ import org.springframework.web.client.RestClient
 @Configuration
 class RestClientConfig {
     @Bean
-    fun restClient(): RestClient =
+    fun restClientBuilder(): RestClient.Builder =
         RestClient
             .builder()
             .requestFactory(BufferingClientHttpRequestFactory(SimpleClientHttpRequestFactory()))
             .requestInterceptor(LoggingRestClientInterceptor())
+
+    @Bean
+    fun restClient(restClientBuilder: RestClient.Builder): RestClient =
+        restClientBuilder
             .defaultStatusHandler(HttpStatusCode::isError) { _, _ -> }
             .build()
 }
