@@ -16,9 +16,17 @@ class RestClientConfig {
             .requestFactory(BufferingClientHttpRequestFactory(SimpleClientHttpRequestFactory()))
             .requestInterceptor(LoggingRestClientInterceptor())
 
+    /**
+     * Do not use `pl.bartek.aidevs.config.RestClientConfig.restClientBuilder` since it will be customized by Spring AI
+     * with retry template and this `RestClient` should just send a request and don't throw exception if there was
+     * a client or server error HTTP status code
+     */
     @Bean
-    fun restClient(restClientBuilder: RestClient.Builder): RestClient =
-        restClientBuilder
+    fun restClient(): RestClient =
+        RestClient
+            .builder()
+            .requestFactory(BufferingClientHttpRequestFactory(SimpleClientHttpRequestFactory()))
+            .requestInterceptor(LoggingRestClientInterceptor())
             .defaultStatusHandler(HttpStatusCode::isError) { _, _ -> }
             .build()
 }
