@@ -8,7 +8,7 @@ import org.springframework.boot.ansi.AnsiBackground
 import org.springframework.boot.ansi.AnsiColor
 import org.springframework.boot.ansi.AnsiOutput
 import org.springframework.boot.ansi.AnsiStyle
-import pl.bartek.aidevs.courseapi.AiDevsAnswerResponse
+import pl.bartek.aidevs.course.api.AiDevsAnswerResponse
 import java.nio.file.Path
 import java.util.Locale
 

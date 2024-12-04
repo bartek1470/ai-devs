@@ -14,9 +14,9 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.config.Profile.QDRANT
 import pl.bartek.aidevs.course.TaskId
-import pl.bartek.aidevs.courseapi.AiDevsAnswer
-import pl.bartek.aidevs.courseapi.AiDevsApiClient
-import pl.bartek.aidevs.courseapi.Task
+import pl.bartek.aidevs.course.api.AiDevsAnswer
+import pl.bartek.aidevs.course.api.AiDevsApiClient
+import pl.bartek.aidevs.course.api.Task
 import pl.bartek.aidevs.util.ReadFile
 import pl.bartek.aidevs.util.println
 import pl.bartek.aidevs.util.unzip

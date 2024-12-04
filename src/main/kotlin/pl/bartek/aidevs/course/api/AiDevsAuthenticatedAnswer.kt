@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.courseapi
+package pl.bartek.aidevs.course.api
 
 import com.fasterxml.jackson.annotation.JsonProperty
 

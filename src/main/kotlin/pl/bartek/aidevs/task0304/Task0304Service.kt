@@ -19,9 +19,9 @@ import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.course.TaskId
-import pl.bartek.aidevs.courseapi.AiDevsAnswer
-import pl.bartek.aidevs.courseapi.AiDevsApiClient
-import pl.bartek.aidevs.courseapi.Task
+import pl.bartek.aidevs.course.api.AiDevsAnswer
+import pl.bartek.aidevs.course.api.AiDevsApiClient
+import pl.bartek.aidevs.course.api.Task
 import pl.bartek.aidevs.util.ansiFormatted
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.extractXmlRoot

@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.courseapi
+package pl.bartek.aidevs.course.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value

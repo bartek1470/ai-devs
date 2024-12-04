@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.courseapi
+package pl.bartek.aidevs.course.api
 
 data class AiDevsAnswer<T>(
     val task: Task,
