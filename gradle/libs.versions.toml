@@ -11,6 +11,7 @@ spring-boot = "3.3.5"
 spring-dependencyManagement = "1.1.6"
 spring-shell = "3.3.3"
 zip4j = "2.11.5"
+kotlin-coroutines = "1.9.0"
 
 [libraries]
 apache-commons-codec = { group = "commons-codec", name = "commons-codec", version.ref = "apache-commons" }
@@ -26,8 +27,11 @@ spring-ai-ollama = { group = "org.springframework.ai", name = "spring-ai-ollama"
 spring-ai-openai-starter = { group = "org.springframework.ai", name = "spring-ai-openai-spring-boot-starter" }
 spring-ai-qdrant-starter = { group = "org.springframework.ai", name = "spring-ai-qdrant-store-spring-boot-starter" }
 spring-boot-test-starter = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
+spring-boot-starter-data-neo4j = { group = "org.springframework.boot", name = "spring-boot-starter-data-neo4j" }
 spring-shell-bom = { group = "org.springframework.shell", name = "spring-shell-dependencies", version.ref = "spring-shell" }
 spring-shell-starter = { group = "org.springframework.shell", name = "spring-shell-starter" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
+kotlinx-coroutines-reactor = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-reactor", version.ref = "kotlin-coroutines" }
 zip4j = {group = "net.lingala.zip4j", name = "zip4j", version.ref = "zip4j"}
 
 [plugins]

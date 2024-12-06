@@ -14,4 +14,5 @@ enum class Task(
     WEKTORY("wektory"),
     DATABASE("database"),
     LOOP("loop"),
+    CONNECTIONS("connections"),
 }

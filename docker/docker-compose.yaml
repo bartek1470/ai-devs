@@ -18,6 +18,18 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
+  neo4j:
+    image: neo4j:latest
+    container_name: neo4j
+    volumes:
+      - neo4j-data:/data
+    environment:
+      - NEO4J_dbms_security_auth__minimum__password__length=1
+      - NEO4J_AUTH=neo4j/pass
+    ports:
+      - "7474:7474"
+      - "7687:7687"
 
 volumes:
   ollama:
+  neo4j-data:

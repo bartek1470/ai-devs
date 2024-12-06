@@ -42,8 +42,11 @@ dependencies {
     implementation(libs.zip4j)
     implementation(libs.jsoup)
     implementation(libs.kotlin.reflect)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.reactor)
     implementation(libs.jackson.kotlin)
     implementation(libs.jackson.dataformat.xml)
+    implementation(libs.spring.boot.starter.data.neo4j)
     implementation(libs.spring.ai.openai.starter)
     implementation(libs.spring.ai.qdrant.starter)
     implementation(libs.spring.ai.ollama)
@@ -56,7 +59,7 @@ dependencies {
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.addAll("-Xjsr305=strict")
+        freeCompilerArgs.addAll("-Xjsr305=strict", "-Xdebug")
     }
 }
 
