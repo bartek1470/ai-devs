@@ -85,6 +85,8 @@ aidevs:
       data-url: ${AIDEVS_TASK_0304_DATAURL}
       api-url: ${AIDEVS_TASK_0304_APIURL}
       answer-url: ${AIDEVS_TASK_0304_ANSWERURL}
+    0401:
+      photos-url: ${AIDEVS_TASK_0401_PHOTOS_URL}
 
 logging:
   file:
