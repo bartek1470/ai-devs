@@ -15,33 +15,23 @@ import kotlin.io.path.exists
 
 @Service
 class ChatService(
-    @Value("\${aidevs.cache-dir}") cacheDir: Path,
     private val chatClient: ChatClient,
 ) {
-    private val cacheDir = cacheDir.resolve("prompt")
-
-    init {
-        Files.createDirectories(this.cacheDir)
-    }
 
     fun sendToChat(
         messages: List<Message>,
         functions: List<FunctionCallback> = listOf(),
         chatOptions: ChatOptions? = null,
         streaming: Boolean = true,
+        cachePath: Path? = null,
         responseReceived: (String) -> Unit = {},
     ): String {
-        val cachedName = "${messages.hashCode()}.txt"
-
-        val cachedPath = cacheDir.resolve(cachedName)
-        if (cachedPath.exists()) {
-            log.debug { "Using cached response $cachedName" }
-            val cachedResponse = Files.readString(cachedPath)
+        if (cachePath?.exists() == true) {
+            log.debug { "Using cached response $cachePath" }
+            val cachedResponse = Files.readString(cachePath)
             responseReceived.invoke(cachedResponse)
             return cachedResponse
         }
-
-        log.debug { "Cached file $cachedName doesn't exist. Calling chat client" }
 
         val chatRequestSpec =
             chatClient
@@ -70,7 +60,7 @@ class ChatService(
                 content
             }
 
-        Files.writeString(cachedPath, responseContent)
+        cachePath?.let { Files.writeString(it, responseContent) }
         return responseContent
     }
 
