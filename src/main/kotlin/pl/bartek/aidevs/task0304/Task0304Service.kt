@@ -10,7 +10,6 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
 import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
-import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.ai.openai.api.OpenAiApi.ChatModel
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
@@ -66,9 +65,19 @@ class Task0304Service(
         val summaryWithLists = summarizeInputData()
         val summary = summaryWithLists.substring(0, summaryWithLists.indexOf("<")).trim()
         val people =
-            summaryWithLists.extractXmlRoot("people")!!.let { xmlMapper.readValue<String>(it) }.trim().split("\n").map { it.trim() }
+            summaryWithLists
+                .extractXmlRoot("people")!!
+                .let { xmlMapper.readValue<String>(it) }
+                .trim()
+                .split("\n")
+                .map { it.trim() }
         val places =
-            summaryWithLists.extractXmlRoot("places")!!.let { xmlMapper.readValue<String>(it) }.trim().split("\n").map { it.trim() }
+            summaryWithLists
+                .extractXmlRoot("places")!!
+                .let { xmlMapper.readValue<String>(it) }
+                .trim()
+                .split("\n")
+                .map { it.trim() }
 
         terminal.println("Note summary:".ansiFormattedSecondaryInfoTitle())
         terminal.println(summary.ansiFormattedSecondaryInfo())
@@ -144,10 +153,12 @@ class Task0304Service(
                         ).inputType(AskApiQuery::class.java)
                         .build(),
                 ),
-                chatOptions = PortableFunctionCallingOptions.builder()
-                    .withTemperature(0.5)
-                    .withModel(ChatModel.GPT_4_O.value)
-                    .build()
+                chatOptions =
+                    PortableFunctionCallingOptions
+                        .builder()
+                        .withTemperature(0.5)
+                        .withModel(ChatModel.GPT_4_O.value)
+                        .build(),
             )
 
         terminal.println("AI:".ansiFormattedAi())
@@ -201,11 +212,11 @@ class Task0304Service(
                     ),
                 ),
                 chatOptions =
-                PortableFunctionCallingOptions
-                    .builder()
-                    .withTemperature(0.0)
+                    PortableFunctionCallingOptions
+                        .builder()
+                        .withTemperature(0.0)
                         .withModel(ChatModel.GPT_4_O.value)
-                    .build(),
+                        .build(),
             )
 
         Files.writeString(cachedSummaryPath, summaryWithLists)

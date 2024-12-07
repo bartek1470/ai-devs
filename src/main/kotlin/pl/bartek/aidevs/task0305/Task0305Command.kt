@@ -2,7 +2,6 @@ package pl.bartek.aidevs.task0305
 
 import org.jline.terminal.Terminal
 import org.springframework.shell.command.annotation.Command
-import pl.bartek.aidevs.task0304.Task0304Service
 
 @Command(
     group = "task",

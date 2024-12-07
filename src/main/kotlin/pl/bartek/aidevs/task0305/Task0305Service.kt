@@ -74,33 +74,35 @@ class Task0305Service(
         terminal.println(answer)
     }
 
-    suspend fun findUsers(): List<DbUser> = coroutineScope {
-        val countResponse =
-            restClient
-                .post()
-                .uri(apiUrl)
-                .body(DbRequest("select count(*) as user_count from users;", apiKey))
-                .retrieve()
-                .body(object : ParameterizedTypeReference<DbApiResponse<JsonNode>>() {})
-                ?: throw IllegalStateException("Cannot count users")
-
-        val count = countResponse.reply[0]["user_count"].asInt()
-        val responses = mutableListOf<Deferred<DbApiResponse<DbUser>>>()
-        for (i in 0..count step 10) {
-            val users = async {
+    suspend fun findUsers(): List<DbUser> =
+        coroutineScope {
+            val countResponse =
                 restClient
                     .post()
                     .uri(apiUrl)
-                    .body(DbRequest("select * from users limit 10 offset $i;", apiKey))
+                    .body(DbRequest("select count(*) as user_count from users;", apiKey))
                     .retrieve()
-                    .body(object : ParameterizedTypeReference<DbApiResponse<DbUser>>() {})
-                    ?: throw IllegalStateException("Cannot find users")
-            }
-            responses.add(users)
-        }
+                    .body(object : ParameterizedTypeReference<DbApiResponse<JsonNode>>() {})
+                    ?: throw IllegalStateException("Cannot count users")
 
-        responses.awaitAll().flatMap { it.reply }
-    }
+            val count = countResponse.reply[0]["user_count"].asInt()
+            val responses = mutableListOf<Deferred<DbApiResponse<DbUser>>>()
+            for (i in 0..count step 10) {
+                val users =
+                    async {
+                        restClient
+                            .post()
+                            .uri(apiUrl)
+                            .body(DbRequest("select * from users limit 10 offset $i;", apiKey))
+                            .retrieve()
+                            .body(object : ParameterizedTypeReference<DbApiResponse<DbUser>>() {})
+                            ?: throw IllegalStateException("Cannot find users")
+                    }
+                responses.add(users)
+            }
+
+            responses.awaitAll().flatMap { it.reply }
+        }
 
     suspend fun findConnections(userId: Int): List<DbConnection> {
         val connections =

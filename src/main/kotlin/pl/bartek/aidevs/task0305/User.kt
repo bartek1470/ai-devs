@@ -10,5 +10,5 @@ data class User(
     val id: Int,
     val username: String,
     @Relationship(value = "CONNECTED", direction = Relationship.Direction.INCOMING)
-    val relatedUsers: MutableList<User> = mutableListOf()
+    val relatedUsers: MutableList<User> = mutableListOf(),
 )
