@@ -7,6 +7,7 @@ import org.springframework.ai.autoconfigure.openai.OpenAiConnectionProperties
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
 import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionMessage
 import org.springframework.beans.factory.annotation.Value
@@ -18,11 +19,15 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
+import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.ai.openai.api.model.CreateFineTuningJobRequest
 import pl.bartek.aidevs.ai.openai.api.model.CreateFineTuningJobResponse
 import pl.bartek.aidevs.ai.openai.api.model.FileResponse
 import pl.bartek.aidevs.config.Profile.OPENAI
 import pl.bartek.aidevs.course.TaskId
+import pl.bartek.aidevs.course.api.AiDevsAnswer
+import pl.bartek.aidevs.course.api.AiDevsApiClient
+import pl.bartek.aidevs.course.api.Task
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.println
 import java.nio.file.Files
@@ -32,15 +37,19 @@ import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import kotlin.io.path.readLines
 
+private const val SYSTEM_MESSAGE_CONTENT = "Is this sample correct? Answer true or false"
+
 @Profile(OPENAI)
 @Service
 class Task0402Service(
     @Value("\${aidevs.cache-dir}") cacheDir: String,
+    @Value("\${aidevs.task.0402.answer-url}") private val answerUrl: String,
     @Value("\${aidevs.task.0402.data-url}") private val dataUrl: String,
     openAiConnectionProperties: OpenAiConnectionProperties,
-
     private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
+    private val chatService: ChatService,
+    private val aiDevsApiClient: AiDevsApiClient,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0402.cacheFolderName()).absolute()
 
@@ -74,7 +83,8 @@ class Task0402Service(
                 .toEntity(FileResponse::class.java)
 
         val fileResponse = fileResult.body ?: throw IllegalStateException("Missing response body")
-        terminal.println("Upload file result: ${fileResult.statusCode}\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(fileResponse)}")
+        val jsonFileResponse = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(fileResponse)
+        terminal.println("Upload file result: ${fileResult.statusCode}\n$jsonFileResponse")
         if (fileResult.statusCode != HttpStatus.OK) {
             terminal.println("Failed to upload file".ansiFormattedError())
             return
@@ -93,7 +103,8 @@ class Task0402Service(
                 .toEntity(CreateFineTuningJobResponse::class.java)
 
         val createFineTuningJobResponse = createFineTuningJobResult.body ?: throw IllegalStateException("Missing response body")
-        terminal.println("Start of fine-tuning job: ${createFineTuningJobResult.statusCode}\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(createFineTuningJobResponse)}")
+        val createFineTuningJobJsonResponse = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(createFineTuningJobResponse)
+        terminal.println("Start of fine-tuning job: ${createFineTuningJobResult.statusCode}\n$createFineTuningJobJsonResponse")
         if (createFineTuningJobResult.statusCode != HttpStatus.OK) {
             terminal.println("Failed to start fine-tuning job".ansiFormattedError())
             return
@@ -114,7 +125,7 @@ class Task0402Service(
                 .readLines()
                 .map {
                     listOf(
-                        SystemMessage("Is this sample correct? Answer true or false"),
+                        SystemMessage(SYSTEM_MESSAGE_CONTENT),
                         UserMessage(it),
                         AssistantMessage("true"),
                     )
@@ -126,7 +137,7 @@ class Task0402Service(
                 .readLines()
                 .map {
                     listOf(
-                        SystemMessage("Is this sample correct? Answer true or false"),
+                        SystemMessage(SYSTEM_MESSAGE_CONTENT),
                         UserMessage(it),
                         AssistantMessage("false"),
                     )
@@ -152,6 +163,44 @@ class Task0402Service(
         modelName: String,
         terminal: Terminal,
     ) {
+        val dataPath = fetchData(dataUrl, restClient, cacheDir)
+        val samplesToVerify =
+            dataPath
+                .resolve("verify.txt")
+                .readLines()
+                .map { line -> line.split("=") }
+                .associateBy({ it[0] }, { it[1] })
+
+        val results =
+            samplesToVerify
+                .mapValues { entry ->
+                    chatService.sendToChat(
+                        messages =
+                            listOf(
+                                SystemMessage(SYSTEM_MESSAGE_CONTENT),
+                                UserMessage(entry.value),
+                            ),
+                        chatOptions =
+                            PortableFunctionCallingOptions
+                                .builder()
+                                .withModel(modelName)
+                                .withTemperature(0.0)
+                                .build(),
+                        streaming = false,
+                        cachePath = cacheDir.resolve("sample-${entry.key}.txt"),
+                    )
+                }.mapValues {
+                    it.value.toBoolean()
+                }
+
+        terminal.println("Results:\n$results")
+        val correctResults =
+            results
+                .filterValues { it }
+                .toList()
+                .map { it.first }
+        val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.RESEARCH, correctResults))
+        terminal.println(answer)
     }
 
     companion object {

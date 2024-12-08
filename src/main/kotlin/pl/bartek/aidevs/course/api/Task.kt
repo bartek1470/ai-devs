@@ -16,4 +16,5 @@ enum class Task(
     LOOP("loop"),
     CONNECTIONS("connections"),
     PHOTOS("photos"),
+    RESEARCH("research"),
 }
