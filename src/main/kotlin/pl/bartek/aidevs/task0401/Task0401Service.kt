@@ -1,13 +1,11 @@
 package pl.bartek.aidevs.task0401
 
-import com.fasterxml.jackson.core.io.CharacterEscapes
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import groovy.json.StringEscapeUtils
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
@@ -34,7 +32,6 @@ import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.extractXmlRoot
 import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
-import java.io.InputStreamReader
 import java.nio.file.Files
 import kotlin.io.path.Path
 import kotlin.io.path.absolute
@@ -44,18 +41,14 @@ import kotlin.io.path.nameWithoutExtension
 class Task0401Service(
     @Value("\${aidevs.task.0401.photos-url}") private val photosUrl: String,
     @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.cache-dir}")cacheDir: String,
+    @Value("\${aidevs.cache-dir}") cacheDir: String,
     private val chatService: ChatService,
     private val objectMapper: ObjectMapper,
     restClient: RestClient,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0401.cacheFolderName()).absolute()
 
-    private val restClient =
-        restClient
-            .mutate()
-            .baseUrl(photosUrl)
-            .build()
+    private val restClient = restClient.mutate().baseUrl(photosUrl).build()
 
     private val xmlMapper =
         XmlMapper
@@ -80,9 +73,7 @@ class Task0401Service(
         terminal.println("AI response:".ansiFormattedAi())
 
         val availableRepeatableOperations =
-            ImageOperation.entries
-                .filter { it != ImageOperation.START }
-                .joinToString(", ")
+            ImageOperation.entries.filter { it != ImageOperation.START }.joinToString(", ")
         val response =
             chatService.sendToChat(
                 messages =
@@ -122,7 +113,11 @@ class Task0401Service(
                                         return errorMessage
                                     }
                                     if (request.operation == ImageOperation.START &&
-                                        history.firstOrNull { it.startsWith(ImageOperation.START.name) } != null
+                                        history.firstOrNull {
+                                            it.startsWith(
+                                                ImageOperation.START.name,
+                                            )
+                                        } != null
                                     ) {
                                         val errorMessage = "ERROR: START cannot be used again!"
                                         log.error { errorMessage }
@@ -246,12 +241,12 @@ class Task0401Service(
                 cachePath = cacheDir.resolve("result.txt"),
             )
 
-
-        val answerObj = AiDevsAuthenticatedAnswer(
-            Task.PHOTOS.taskName,
-            barbaraDescription,
-            apiKey,
-        )
+        val answerObj =
+            AiDevsAuthenticatedAnswer(
+                Task.PHOTOS.taskName,
+                barbaraDescription,
+                apiKey,
+            )
         val body = objectMapper.writeValueAsString(answerObj)
         val answer =
             restClient
@@ -259,7 +254,8 @@ class Task0401Service(
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
-                .body<AiDevsAnswerResponse>() ?: throw IllegalStateException("Cannot get response")
+                .body<AiDevsAnswerResponse>()
+                ?: throw IllegalStateException("Cannot get response")
 
         terminal.println(answer)
     }

@@ -6,7 +6,6 @@ import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.model.function.FunctionCallback
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.nio.file.Files
 import java.nio.file.Path
@@ -17,7 +16,6 @@ import kotlin.io.path.exists
 class ChatService(
     private val chatClient: ChatClient,
 ) {
-
     fun sendToChat(
         messages: List<Message>,
         functions: List<FunctionCallback> = listOf(),
