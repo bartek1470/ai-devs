@@ -20,6 +20,7 @@ class TranscriptService(
     @Value("\${aidevs.cache-dir}") private val cacheDir: Path,
     @Value("\${aidevs.local.ollama.unload-before-whisper:false}") private val unloadOllamaBeforeWhisper: Boolean,
     @Value("\${aidevs.local.ollama.possible-models:[]}") private val possibleOllamaModels: List<String>,
+    @Value("\${python.packages.path}") private val pythonPackagesPath: Path,
     private val chatClient: ChatClient,
 ) {
     // TODO [bartek1470] second option -> OpenAiAudioTranscriptionModel - via OpenAI API
@@ -59,9 +60,10 @@ class TranscriptService(
 
         try {
             val language = file.language ?: WhisperLanguage.ENGLISH
+            val whisperExecutablePath = pythonPackagesPath.resolve("whisper").toString()
             val process =
                 ProcessBuilder(
-                    "whisper",
+                    whisperExecutablePath,
                     "--task",
                     "transcribe",
                     "--model",

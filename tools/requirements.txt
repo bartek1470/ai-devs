@@ -1,0 +1,2 @@
+markitdown==0.0.1a3
+openai-whisper==20240930

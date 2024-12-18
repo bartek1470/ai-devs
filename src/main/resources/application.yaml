@@ -34,6 +34,10 @@ spring:
       username: neo4j
       password: pass
 
+python:
+  packages:
+    path: ./tools/.venv/bin
+
 aidevs:
   cache-dir: .cache/ai-devs/
   api-key: ${AIDEVS_APIKEY}
