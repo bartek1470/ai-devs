@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.transcript
+package pl.bartek.aidevs.ai.transcript
 
 enum class WhisperModel(
     val modelName: String,

@@ -17,9 +17,9 @@ import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
-import pl.bartek.aidevs.transcript.FileToTranscribe
-import pl.bartek.aidevs.transcript.TranscriptService
-import pl.bartek.aidevs.transcript.WhisperLanguage.POLISH
+import pl.bartek.aidevs.ai.transcript.FileToTranscribe
+import pl.bartek.aidevs.ai.transcript.TranscriptService
+import pl.bartek.aidevs.ai.transcript.WhisperLanguage.POLISH
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle

@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.transcript
+package pl.bartek.aidevs.ai.transcript
 
 import org.springframework.core.io.Resource
 

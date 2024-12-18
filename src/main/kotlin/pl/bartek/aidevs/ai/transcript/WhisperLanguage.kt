@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.transcript
+package pl.bartek.aidevs.ai.transcript
 
 /**
  * [Languages list](https://github.com/openai/whisper/blob/main/whisper/tokenizer.py)

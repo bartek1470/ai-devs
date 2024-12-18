@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.transcript
+package pl.bartek.aidevs.ai.transcript
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.ai.chat.client.ChatClient
