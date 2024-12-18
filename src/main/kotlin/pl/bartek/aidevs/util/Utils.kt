@@ -102,3 +102,17 @@ fun String.extractXmlRoot(xmlTagName: String = "result"): String? {
     val endIndex = indexOf(xmlEndTag, ignoreCase = true) + xmlEndTag.length
     return if (startIndex < 0 || endIndex < 0) null else substring(startIndex, endIndex)
 }
+
+fun String.executeCommand(vararg args: String): String {
+    val process: Process = ProcessBuilder(this, *args).start()
+    val exitCode = process.waitFor()
+
+    if (exitCode == 0) {
+        log.debug { "Success: $this ${args.joinToString(" ")}" }
+        return process.inputReader().readText()
+    }
+    val error = process.errorReader().readText()
+    val errorMessage = "Exit code $exitCode: $this ${args.joinToString(" ")}\n$error"
+    log.error { errorMessage }
+    throw IllegalStateException(errorMessage)
+}
