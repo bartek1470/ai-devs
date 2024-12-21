@@ -17,4 +17,5 @@ enum class Task(
     CONNECTIONS("connections"),
     PHOTOS("photos"),
     RESEARCH("research"),
+    SOFTO("softo"),
 }
