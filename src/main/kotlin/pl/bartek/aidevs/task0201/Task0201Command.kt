@@ -14,13 +14,13 @@ import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.ai.transcript.FileToTranscribe
+import pl.bartek.aidevs.ai.transcript.TranscriptService
+import pl.bartek.aidevs.ai.transcript.WhisperLanguage
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
-import pl.bartek.aidevs.ai.transcript.FileToTranscribe
-import pl.bartek.aidevs.ai.transcript.TranscriptService
-import pl.bartek.aidevs.ai.transcript.WhisperLanguage
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
