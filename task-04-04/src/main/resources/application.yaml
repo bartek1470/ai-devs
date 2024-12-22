@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: task-04-04
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        enabled: true
+        options:
+          model: ${OPENAI_DEFAULT_CHAT_MODEL:gpt-4o-mini}
+
+
+aidevs:
+  api-key: ${AIDEVS_APIKEY}
+  hq-url: ${AIDEVS_HQURL}
+  task:
+    0404:
+      server-url: ${AIDEVS_TASK_0404_SERVER_URL}
