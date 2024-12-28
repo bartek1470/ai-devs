@@ -6,6 +6,7 @@ kotlin = "1.9.25"
 kotlin-coroutines = "1.9.0"
 kotlin-logging = "7.0.0"
 kotlin-spring = "1.9.25"
+pdfbox="3.0.3"
 spotless = "7.0.0.BETA4"
 spring-ai = "1.0.0-M4"
 spring-boot = "3.3.5"
@@ -27,6 +28,7 @@ kotlinx-coroutines-reactor = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 spring-ai-bom = { group = "org.springframework.ai", name = "spring-ai-bom", version.ref = "spring-ai" }
 spring-ai-ollama = { group = "org.springframework.ai", name = "spring-ai-ollama" }
 spring-ai-openai-starter = { group = "org.springframework.ai", name = "spring-ai-openai-spring-boot-starter" }
+spring-ai-pdf-document-reader = { group = "org.springframework.ai", name = "spring-ai-pdf-document-reader" }
 spring-ai-qdrant-starter = { group = "org.springframework.ai", name = "spring-ai-qdrant-store-spring-boot-starter" }
 spring-boot-devtools = { group = "org.springframework.boot", name = "spring-boot-devtools" }
 spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator" }

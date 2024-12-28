@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.spring.ai.openai.starter)
     implementation(libs.spring.ai.qdrant.starter)
     implementation(libs.spring.ai.ollama)
+    implementation(libs.spring.ai.pdf.document.reader)
     implementation(libs.spring.shell.starter)
     implementation(libs.kotlin.logging)
     testImplementation(libs.spring.boot.test.starter)

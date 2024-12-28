@@ -2,6 +2,15 @@
 
 Implementation of tasks from the third edition of [AI Devs](https://www.aidevs.pl/).
 
+## Dependencies
+
+- [Tesseract](https://tesseract-ocr.github.io/tessdoc/Installation.html)
+```shell
+sudo apt install tesseract-ocr
+sudo apt install libtesseract-dev
+sudo apt install tesseract-ocr-pol # Polish language
+```
+
 ## Tech stack
 
 - [Kotlin](https://kotlinlang.org/)

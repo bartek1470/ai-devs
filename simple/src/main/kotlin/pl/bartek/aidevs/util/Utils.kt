@@ -8,7 +8,11 @@ import org.springframework.boot.ansi.AnsiBackground
 import org.springframework.boot.ansi.AnsiColor
 import org.springframework.boot.ansi.AnsiOutput
 import org.springframework.boot.ansi.AnsiStyle
+import org.springframework.http.MediaType
+import org.springframework.web.client.RestClient
+import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.course.api.AiDevsAnswerResponse
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
 
@@ -115,4 +119,25 @@ fun String.executeCommand(vararg args: String): String {
     val errorMessage = "Exit code $exitCode: $this ${args.joinToString(" ")}\n$error"
     log.error { errorMessage }
     throw IllegalStateException(errorMessage)
+}
+
+fun RestClient.downloadFile(url: String, apiKey: String? = null, directory: Path): Path {
+    val uriComponents =
+        UriComponentsBuilder
+            .fromHttpUrl(url)
+            .build()
+    val filename = uriComponents.pathSegments[uriComponents.pathSegments.size - 1]!!
+    val filePath = directory.resolve(filename)
+    if (Files.exists(filePath)) {
+        log.debug { "File already exists: ${filePath.toAbsolutePath()}. Skipping download" }
+        return filePath
+    }
+
+    val body = get()
+            .uri(uriComponents.toUriString(), apiKey)
+            .headers { it.contentType = MediaType.APPLICATION_OCTET_STREAM }
+            .retrieve()
+            .body(ByteArray::class.java)!!
+    Files.write(filePath, body)
+    return filePath
 }

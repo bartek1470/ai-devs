@@ -19,6 +19,7 @@ enum class TaskId {
     TASK_0401,
     TASK_0402,
     TASK_0403,
+    TASK_0405,
     ;
 
     fun cacheFolderName(): String = name.substring("TASK_".length, name.length)

@@ -98,6 +98,10 @@ aidevs:
       answer-url: ${AIDEVS_TASK_0403_ANSWERURL}
       base-url: ${AIDEVS_TASK_0403_BASE_URL}
       questions-url: ${AIDEVS_TASK_0403_QUESTIONS_URL}
+    0405:
+      answer-url: ${AIDEVS_TASK_0405_ANSWER_URL}
+      data-url: ${AIDEVS_TASK_0405_DATA_URL}
+      questions-url: ${AIDEVS_TASK_0405_QUESTIONS_URL}
 
 logging:
   file:
