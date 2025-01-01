@@ -1,5 +1,13 @@
 package pl.bartek.aidevs.task0405
 
+import com.fasterxml.jackson.core.JacksonException
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.MapperFeature
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.qdrant.client.QdrantClient
 import org.apache.pdfbox.Loader
@@ -8,6 +16,7 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.document.Document
 import org.springframework.ai.model.Media
+import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.reader.ExtractedTextFormatter
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
@@ -40,6 +49,7 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.nameWithoutExtension
 
 private const val IMAGE_FILE_SIZE_THRESHOLD = 1 * 1024 * 1024
+private const val DESCRIPTION_FILE_EXTENSION = "xml"
 
 @Service
 class Task0405Service(
@@ -57,16 +67,24 @@ class Task0405Service(
     private val qdrantClient: QdrantClient,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
-    private val markitdownExecPath = pythonPackagesPath.resolve("markitdown").toAbsolutePath().toString()
+    private val xmlMapper: ObjectMapper =
+        XmlMapper
+            .builder()
+            .defaultUseWrapper(false)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
+            .configure(SerializationFeature.INDENT_OUTPUT, true)
+            .build()
+            .registerKotlinModule()
 
     init {
         Files.createDirectories(this.cacheDir)
     }
 
     fun run(terminal: Terminal) {
-        val questions = fetchQuestions()
         val pdf = restClient.downloadFile(dataUrl, apiKey, cacheDir)
         prepareDocumentsInVectorStore(pdf)
+        val questions = fetchQuestions()
     }
 
     private fun prepareDocumentsInVectorStore(pdf: Path) {
@@ -113,7 +131,7 @@ class Task0405Service(
     }
 
     private fun toDocuments(uniqueResources: List<ImageResource>): List<Document> =
-        uniqueResources.map { imageResource ->
+        uniqueResources.flatMap { imageResource ->
             val resource =
                 if (imageResource.smallImage().exists()) {
                     FileSystemResource(imageResource.smallImage())
@@ -131,16 +149,42 @@ class Task0405Service(
                     }.toList()
 
             val descriptionPath: Path = generateImageDescription(imageResource, media)
-            val description: String = Files.readString(descriptionPath)
+            val (imageDescription, imageText) =
+                try {
+                    xmlMapper.readValue<ImageDescription>(descriptionPath.toFile())
+                } catch (e: JacksonException) {
+                    val descriptionString = Files.readString(descriptionPath)
+                    ImageDescription(descriptionString, null)
+                }
 
-            val metadata =
-                mutableMapOf<String, Any>()
-                    .apply {
-                        put("type", "image_description")
-                        put("page_number", imageResource.pageNumbers.joinToString(","))
-                        put(PagePdfDocumentReader.METADATA_FILE_NAME, imageResource.image.fileName.toString())
-                    }.toMap()
-            Document(description, metadata)
+            val documents = mutableListOf<Document>()
+
+            imageDescription
+                .let {
+                    val metadata =
+                        mutableMapOf<String, Any>()
+                            .apply {
+                                put("type", "image_description")
+                                put("page_number", imageResource.pageNumbers.joinToString(","))
+                                put(PagePdfDocumentReader.METADATA_FILE_NAME, imageResource.image.fileName.toString())
+                            }.toMap()
+                    Document(it, metadata)
+                }.also { documents.add(it) }
+
+            imageText
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    val metadata =
+                        mutableMapOf<String, Any>()
+                            .apply {
+                                put("type", "image_text")
+                                put("page_number", imageResource.pageNumbers.joinToString(","))
+                                put(PagePdfDocumentReader.METADATA_FILE_NAME, imageResource.image.fileName.toString())
+                            }.toMap()
+                    Document(it, metadata)
+                }?.also { documents.add(it) }
+
+            documents
         }
 
     private fun generateImageDescription(
@@ -148,7 +192,7 @@ class Task0405Service(
         media: List<Media>,
     ): Path {
         val imageDescriptionPath: Path =
-            imageResource.image.resolveSibling("${imageResource.image.fileName}.txt")
+            imageResource.image.resolveSibling("${imageResource.image.fileName}.$DESCRIPTION_FILE_EXTENSION")
         return if (Files.exists(imageDescriptionPath)) {
             log.info { "Image description exist. Image ${imageResource.image}" }
             imageDescriptionPath
@@ -159,19 +203,45 @@ class Task0405Service(
                     listOf(
                         UserMessage(
                             """
-                            Describe the image. In the description include the text in the image.
+                            Create a XML with `description` and `text` tags inside `image` XML root element.
+                            1. The `description` tag has to contain description what appears in the image. The description has to be translated to Polish language.
+                            2. Next read the text in the image like you would be an OCR tool and include it in XML tag `text`. It's possible there would be no text in the image.
+                                In `text` XML tag, include only text in the image and nothing else.
+                            
+                            DO NOT output anything else than the XML.
+                            DO output only XML structure without any additional formatting, like markdown.
                             
                             Example:
-                            This is an image of a note.
-                            The note has a drawing of a tree in the margin in right upper corner. Next to the tree there's a text: "This was the oldest tree in our town.".
-                            The main content of a note has a text:
-                            "When I was a child there was a big old tree. Now it has been cut and a block of flats is being built here."
+                            <image>
+                            <description>
+                            To jest obraz notatki. Notatka posiada rysunek drzewa na marginesie, w prawym górnym rogu. Obok drzewa widnieje napis: "To było najstarsze drzewo w naszym mieście.". Tekst notatki: "Kiedy byłem dzieckiem, było tam duże, stare drzewo. Teraz zostało ono wycięte i powstaje tu blok."
+                            <description>
+                            <text>
+                            To było najstarsze drzewo w naszym mieście.
+                            Kiedy byłem dzieckiem, było tam duże, stare drzewo. Teraz zostało ono wycięte i powstaje tu blok.
+                            </text>
+                            </image>
                             """.trimIndent(),
                             media,
                         ),
                     ),
+                    chatOptions =
+                        FunctionCallingOptions
+                            .builder()
+                            .temperature(0.0)
+                            .build(),
                 )
-            Files.write(imageDescriptionPath, content.toByteArray(Charsets.UTF_8))
+
+            val xmlContent: String =
+                try {
+                    xmlMapper.readValue<ImageDescription>(content).let { xmlMapper.writeValueAsString(it) }
+                } catch (e: JacksonException) {
+                    log.error {
+                        "Cannot parse generated XML description of $imageResource. Please check if $imageDescriptionPath is a valid XML"
+                    }
+                    content
+                }
+            Files.write(imageDescriptionPath, xmlContent.toByteArray(Charsets.UTF_8))
         }
     }
 
@@ -259,11 +329,11 @@ class Task0405Service(
             .newDirectoryStream(pdfResourcesDir) {
                 val isNotSmallImage = !it.nameWithoutExtension.endsWith(SMALL_IMAGE_SUFFIX)
                 val isNotItself = imagePath.absolutePathString() != it.absolutePathString()
-                val isNotTextFile = it.extension != "txt"
+                val isNotDescriptionFile = it.extension != DESCRIPTION_FILE_EXTENSION
                 it.isRegularFile() &&
                     isNotItself &&
                     isNotSmallImage &&
-                    isNotTextFile
+                    isNotDescriptionFile
             }.singleOrNull {
                 val areEqual = Files.mismatch(it, imagePath) == -1L
                 areEqual
