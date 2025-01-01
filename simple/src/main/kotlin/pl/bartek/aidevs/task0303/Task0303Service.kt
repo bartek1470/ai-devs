@@ -5,7 +5,6 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
-import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
@@ -65,12 +64,11 @@ class Task0303Service(
                 ),
                 listOf(
                     DefaultFunctionCallbackBuilder()
-                        .description("Execute database query")
                         .function("sendDbApiRequest", SendDbApiRequest(apiKey, apiUrl, restClient))
+                        .description("Execute database query")
                         .inputType(SendDbApiRequest::class.java)
                         .build(),
                 ),
-                chatOptions = PortableFunctionCallingOptions.builder().build(),
             ) { terminal.print(it) }
         terminal.println()
 

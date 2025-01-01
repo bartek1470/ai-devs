@@ -5,7 +5,7 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
-import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
+import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
@@ -85,17 +85,17 @@ class Task0403Service(
                         functions =
                             listOf(
                                 DefaultFunctionCallbackBuilder()
-                                    .description("Visits a website specified by a relative URL and returns it in markdown format")
                                     .function(
                                         "visitSite",
                                         visitSiteAction,
-                                    ).inputType(VisitSiteRequest::class.java)
+                                    ).description("Visits a website specified by a relative URL and returns it in markdown format")
+                                    .inputType(VisitSiteRequest::class.java)
                                     .build(),
                             ),
                         chatOptions =
-                            PortableFunctionCallingOptions
+                            FunctionCallingOptions
                                 .builder()
-                                .withTemperature(0.0)
+                                .temperature(0.0)
                                 .build(),
                     ) { terminal.print(it) }
                 terminal.println()

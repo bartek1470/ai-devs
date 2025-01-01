@@ -64,11 +64,11 @@ class Task0302Service(
 
         val result =
             vectorStore.similaritySearch(
-                SearchRequest.query("W raporcie, z którego dnia znajduje się wzmianka o kradzieży prototypu broni?").withTopK(1),
+                SearchRequest.builder().query("W raporcie, z którego dnia znajduje się wzmianka o kradzieży prototypu broni?").topK(1).build(),
             )
 
         terminal.println(result.toString())
-        val date = result[0].metadata[DATE_METADATA_KEY].toString()
+        val date = result?.get(0)?.metadata?.get(DATE_METADATA_KEY)?.toString()
 
         val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.WEKTORY, date))
         terminal.println(answer)

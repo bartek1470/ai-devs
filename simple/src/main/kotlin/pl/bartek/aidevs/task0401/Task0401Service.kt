@@ -11,7 +11,7 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.Media
 import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
-import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
+import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
@@ -95,9 +95,7 @@ class Task0401Service(
                 functions =
                     listOf(
                         DefaultFunctionCallbackBuilder()
-                            .description(
-                                "Executes an operation and returns information about next images if there are next images. The information might not include URLs to images but an instruction how to get the URLs.",
-                            ).function(
+                            .function(
                                 "imageOperation",
                                 fun(request: ImageOperationRequest): String {
                                     val operation =
@@ -144,10 +142,11 @@ class Task0401Service(
                                     val messagePrefix = if (response.isError()) "ERROR" else "MESSAGE"
                                     return "$messagePrefix: ${response.message}"
                                 },
+                            ).description(
+                                "Executes an operation and returns information about next images if there are next images. The information might not include URLs to images but an instruction how to get the URLs.",
                             ).inputType(ImageOperationRequest::class.java)
                             .build(),
                         DefaultFunctionCallbackBuilder()
-                            .description("Describes what is on an image specified by the filename")
                             .function(
                                 "describeImage",
                                 fun(request: DescribeImageRequest): String {
@@ -178,10 +177,10 @@ class Task0401Service(
                                                         ),
                                                     ),
                                                 chatOptions =
-                                                    PortableFunctionCallingOptions
+                                                    FunctionCallingOptions
                                                         .builder()
-                                                        .withModel(OpenAiApi.ChatModel.GPT_4_O.value)
-                                                        .withTemperature(1.0)
+                                                        .model(OpenAiApi.ChatModel.GPT_4_O.value)
+                                                        .temperature(1.0)
                                                         .build(),
                                                 // has to be non-reactive because it's in a tool invocation and having
                                                 // it reactive causes blocking the whole program, since the first
@@ -199,14 +198,15 @@ class Task0401Service(
                                         return ex.message ?: "ERROR: $message"
                                     }
                                 },
-                            ).inputType(DescribeImageRequest::class.java)
+                            ).description("Describes what is on an image specified by the filename")
+                            .inputType(DescribeImageRequest::class.java)
                             .build(),
                     ),
                 chatOptions =
-                    PortableFunctionCallingOptions
+                    FunctionCallingOptions
                         .builder()
-                        .withTemperature(0.7)
-                        .withModel(OpenAiApi.ChatModel.GPT_4_O.value)
+                        .temperature(0.7)
+                        .model(OpenAiApi.ChatModel.GPT_4_O.value)
                         .build(),
                 cachePath = cacheDir.resolve("images-to-process.txt"),
             ) {

@@ -9,7 +9,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
-import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
+import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.openai.api.OpenAiApi.ChatModel
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
@@ -113,11 +113,7 @@ class Task0304Service(
                 ),
                 listOf(
                     DefaultFunctionCallbackBuilder()
-                        .description(
-                            """
-                            Get cities where a person with provided first name is currently located. Accepts only one Polish word without declension and accents. The response can contain multiple names.
-                            """.trimIndent(),
-                        ).function(
+                        .function(
                             "people",
                             SendAskApiRequest(apiKey, restClient, apiUrl, "people") {
                                 terminal.println()
@@ -130,14 +126,14 @@ class Task0304Service(
                                     } ${it.query}\n${"A:".ansiFormatted(color = YELLOW)} ${it.response}",
                                 )
                             },
+                        ).description(
+                            """
+                            Get cities where a person with provided first name is currently located. Accepts only one Polish word without declension and accents. The response can contain multiple names.
+                            """.trimIndent(),
                         ).inputType(AskApiQuery::class.java)
                         .build(),
                     DefaultFunctionCallbackBuilder()
-                        .description(
-                            """
-                            Get people which is currently located in a queried city. Accepts only one Polish word without declension and accents. The response can contain multiple places.
-                            """.trimIndent(),
-                        ).function(
+                        .function(
                             "places",
                             SendAskApiRequest(apiKey, restClient, apiUrl, "places") {
                                 terminal.println()
@@ -150,14 +146,18 @@ class Task0304Service(
                                     } ${it.query}\n${"A:".ansiFormatted(color = YELLOW)} ${it.response}",
                                 )
                             },
+                        ).description(
+                            """
+                            Get people which is currently located in a queried city. Accepts only one Polish word without declension and accents. The response can contain multiple places.
+                            """.trimIndent(),
                         ).inputType(AskApiQuery::class.java)
                         .build(),
                 ),
                 chatOptions =
-                    PortableFunctionCallingOptions
+                    FunctionCallingOptions
                         .builder()
-                        .withTemperature(0.5)
-                        .withModel(ChatModel.GPT_4_O.value)
+                        .temperature(0.5)
+                        .model(ChatModel.GPT_4_O.value)
                         .build(),
             )
 
@@ -212,10 +212,10 @@ class Task0304Service(
                     ),
                 ),
                 chatOptions =
-                    PortableFunctionCallingOptions
+                    FunctionCallingOptions
                         .builder()
-                        .withTemperature(0.0)
-                        .withModel(ChatModel.GPT_4_O.value)
+                        .temperature(0.0)
+                        .model(ChatModel.GPT_4_O.value)
                         .build(),
             )
 
