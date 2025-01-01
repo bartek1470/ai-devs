@@ -23,7 +23,6 @@ import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.ai.reader.ExtractedTextFormatter
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
-import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.ParameterizedTypeReference
@@ -41,6 +40,7 @@ import pl.bartek.aidevs.util.ansiFormattedHuman
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
 import pl.bartek.aidevs.util.downloadFile
+import pl.bartek.aidevs.util.extractXmlRoot
 import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
 import java.awt.Image
@@ -53,15 +53,12 @@ import java.util.UUID
 import javax.imageio.ImageIO
 import kotlin.io.path.Path
 import kotlin.io.path.absolute
-import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 import kotlin.io.path.extension
-import kotlin.io.path.inputStream
-import kotlin.io.path.isRegularFile
 import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.notExists
 
-private const val IMAGE_FILE_SIZE_THRESHOLD = 1 * 1024 * 1024
+private const val IMAGE_DIMENSIONS_THRESHOLD = 1024
 private const val DESCRIPTION_FILE_EXTENSION = "xml"
 
 @Service
@@ -73,6 +70,7 @@ class Task0405Service(
     @Value("\${aidevs.task.0405.questions-url}") private val questionsUrl: String,
     @Value("\${python.packages.path}") pythonPackagesPath: Path,
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
+    objectMapper: ObjectMapper,
     private val restClient: RestClient,
     private val chatService: ChatService,
     private val aiDevsApiClient: AiDevsApiClient,
@@ -80,6 +78,7 @@ class Task0405Service(
     private val qdrantClient: QdrantClient,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
+    private val objectMapper = objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
     private val xmlMapper: ObjectMapper =
         XmlMapper
             .builder()
@@ -98,21 +97,74 @@ class Task0405Service(
         val pdf = restClient.downloadFile(dataUrl, apiKey, cacheDir)
         prepareDocumentsInVectorStore(pdf)
         val questions = fetchQuestions()
+        val pdfResourcesPath = pdf.resolveSibling(pdf.nameWithoutExtension)
+        val pdfStructure = objectMapper.readValue<PdfStructure>(pdfResourcesPath.resolve("structure.json").toFile())
         val answers =
             questions.mapValues { (key, question) ->
-                val results: List<Document> =
-                    vectorStore
-                        .similaritySearch(
-                            SearchRequest
-                                .builder()
-                                .query(question)
-                                .build(),
-                        )?.toList() ?: emptyList()
+//                val results: List<Document> =
+//                    vectorStore
+//                        .similaritySearch(
+//                            SearchRequest
+//                                .builder()
+//                                .query(question)
+//                                .build(),
+//                        )?.toList() ?: emptyList()
+//
+//                val pageNumbers =
+//                    results
+//                        .map { doc -> doc.metadata[PagePdfDocumentReader.METADATA_START_PAGE_NUMBER].toString() }
+//                        .flatMap { it.split(",") }
+//                        .map { it.toInt() }
+//                        .toSortedSet()
+//
+//                val context: List<String> =
+//                    pageNumbers.flatMap { page ->
+//                        pdfStructure.resources
+//                            .filter { it.pageNumbers.contains(page) }
+//                            .map { pdfResource ->
+//                                if (pdfResource.type.startsWith("image")) {
+//                                    val imagePath = pdfResourcesPath.resolve("images").resolve(pdfResource.filename)
+//                                    val imageDescription =
+//                                        xmlMapper.readValue<ImageDescription>(imagePath.resolveSibling("${imagePath.fileName}.xml").toFile())
+//                                    buildString {
+//                                        append("Image description: ")
+//                                        append(imageDescription.description)
+//                                        imageDescription.text?.takeIf { it.isNotBlank() }?.also { append("\nText on the image: $it") }
+//                                    }
+//                                } else {
+//                                    val textPath = pdfResourcesPath.resolve("text").resolve(pdfResource.filename)
+//                                    Files.readString(textPath)
+//                                }
+//                            }
+//                    }.distinct()
+
+                val context = pdfStructure.resources.mapNotNull { pdfResource ->
+                    if (pdfResource.type.startsWith("image")) {
+                        val imagePath = pdfResourcesPath.resolve("images").resolve(pdfResource.filename)
+                        val imageDescription =
+                            xmlMapper.readValue<ImageDescription>(
+                                imagePath.resolveSibling("${imagePath.fileName}.xml").toFile(),
+                            )
+                        val imageText = imageDescription.text?.takeIf { it.isNotBlank() }
+                        if (imageText == null) {
+                            null
+                        } else {
+                            buildString {
+                                append("Image description: ")
+                                append(imageDescription.description)
+                                append("\nText on the image: $imageText")
+                            }
+                        }
+                    } else {
+                        val textPath = pdfResourcesPath.resolve("text").resolve(pdfResource.filename)
+                        Files.readString(textPath)
+                    }
+                }
 
                 val contextDocuments =
-                    results
+                    context
                         .mapIndexed { index, doc ->
-                            "# Context document $index:\n${doc.text}"
+                            "# Context $index:\n${doc.trim()}"
                         }.joinToString("\n\n")
 
                 terminal.println("Context:".ansiFormattedSecondaryInfoTitle())
@@ -124,11 +176,27 @@ class Task0405Service(
                         listOf(
                             SystemMessage(
                                 """
-                        |Answer the user's question. Below you have documents providing context for the question.
-                        |Answer shortly with only the data user has requested, e.g. if asking about a year, answer only with a year.
-                        |The context might don't have the information but you need to answer with the most possible one.
-                        |
-                        |$contextDocuments
+                                |Answer the user's question. Below you have user's notes providing context for the question.
+                                |Those notes are from user's notebook that is some kind of diary.
+                                |Answer shortly with only the data user has requested, e.g. if asking about a year, answer only with a year.
+                                |Provide an answer for the user's question in `result` XML tag.
+                                |The answer has to be translated to Polish language.
+                                |The context might don't have the information but you need to answer with the most possible one.
+                                |There might me some clues in the context like a number from a book.
+                                |When you have a date, think about the context you have found and see if it alerts the found date.
+                                |Also try to think about events mentioned in the text, e.g. when something was invented.
+                                |
+                                |Firstly, try to think about the most possible answer. Describe what you know from the context and facts above.
+                                |After that reason why you think this is most possible answer.
+                                |Lastly, provide an answer for user's question in a way specified above.
+                                |
+                                |# Example
+                                |Users asks about current year. Although year 2005 was mentioned, it is not clear if it is current year. More possible is year 2001 which is mentioned in the end of the note since it's a diary.
+                                |<result>
+                                |2001
+                                |</result>
+                                |
+                                |$contextDocuments
                                 """.trimMargin(),
                             ),
                             UserMessage(question),
@@ -142,7 +210,7 @@ class Task0405Service(
                         responseReceived = { terminal.print(it) },
                     )
                 terminal.println()
-                aiAnswer
+                aiAnswer.extractXmlRoot()?.trim()
             }
 
         val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers))
@@ -155,6 +223,19 @@ class Task0405Service(
             val imageDocuments = createDocumentsFromEmbeddedImages(pdf)
             val textDocuments = createDocumentsFromText(pdf)
             val allDocuments = textDocuments + imageDocuments
+
+            val pdfStructure =
+                allDocuments
+                    .map { doc ->
+                        val filename = doc.metadata[PagePdfDocumentReader.METADATA_FILE_NAME] as String
+                        val pages = doc.metadata[PagePdfDocumentReader.METADATA_START_PAGE_NUMBER].toString()
+                        val type = doc.metadata["type"]?.toString()
+                        PdfResource(filename, pages.split(",").map { it.toInt() }, type ?: "text")
+                    }.let {
+                        PdfStructure(it)
+                    }
+            objectMapper.writeValue(pdf.resolveSibling(pdf.nameWithoutExtension).resolve("structure.json").toFile(), pdfStructure)
+
             log.info { "Adding ${allDocuments.size} documents to vector store" }
             vectorStore.add(allDocuments)
         } else {
@@ -211,6 +292,7 @@ class Task0405Service(
         return documentsWithCachePath.map { (cachePath, doc) ->
             doc
                 .mutate()
+                .metadata(PagePdfDocumentReader.METADATA_FILE_NAME, cachePath.fileName.toString())
                 .metadata("original_text", doc.text!!)
                 .text(Files.readString(cachePath))
                 .build()
@@ -223,7 +305,6 @@ class Task0405Service(
         Files.createDirectories(pdfResourcesDir)
         val imageResources = extractImagesFromPdf(pdf, pdfResourcesDir)
         val uniqueResources = removeDuplicates(imageResources)
-        reduceSizeIfNeeded(uniqueResources)
         return toDocuments(uniqueResources)
     }
 
@@ -339,23 +420,8 @@ class Task0405Service(
                     }
                     content
                 }
-            Files.write(imageDescriptionPath, xmlContent.toByteArray(Charsets.UTF_8))
+            Files.write(imageDescriptionPath, xmlContent.toByteArray())
         }
-    }
-
-    private fun reduceSizeIfNeeded(uniqueResources: List<ImageResource>) {
-        uniqueResources
-            .filter { Files.size(it.image) >= IMAGE_FILE_SIZE_THRESHOLD }
-            .forEach {
-                val smallImagePath = it.image.resolveSibling(it.smallImage())
-                val originalBufferedImage = it.image.inputStream().use(ImageIO::read)
-                val smallWidth = originalBufferedImage.width / 2
-                val smallHeight = originalBufferedImage.height / 2
-                val smallImage = originalBufferedImage.getScaledInstance(smallWidth, smallHeight, Image.SCALE_SMOOTH)
-                val smallBufferedImage = BufferedImage(smallWidth, smallHeight, BufferedImage.TYPE_INT_RGB)
-                smallBufferedImage.graphics.drawImage(smallImage, 0, 0, null)
-                ImageIO.write(smallBufferedImage, it.image.extension, smallImagePath.toFile())
-            }
     }
 
     private fun removeDuplicates(imageResources: List<ImageResource>): List<ImageResource> {
@@ -394,29 +460,30 @@ class Task0405Service(
                             val fileHashNamePath = filePath.resolveSibling("$hash.$extension")
                             // pdf can contain the same image multiple times
                             Files.move(filePath, fileHashNamePath, StandardCopyOption.REPLACE_EXISTING)
+                            if (imageXObject.image.width > IMAGE_DIMENSIONS_THRESHOLD ||
+                                imageXObject.image.height > IMAGE_DIMENSIONS_THRESHOLD
+                            ) {
+                                createSmallVersion(fileHashNamePath, imageXObject)
+                            }
                             fileHashNamePath
                         }.map { ImageResource(it, setOf(index)) }
                 }.flatMap { it }
         }
     }
 
-    private fun findSameImage(
-        pdfResourcesDir: Path,
-        imagePath: Path,
-    ): Path? =
-        Files
-            .newDirectoryStream(pdfResourcesDir) {
-                val isNotSmallImage = !it.nameWithoutExtension.endsWith(SMALL_IMAGE_SUFFIX)
-                val isNotItself = imagePath.absolutePathString() != it.absolutePathString()
-                val isNotDescriptionFile = it.extension != DESCRIPTION_FILE_EXTENSION
-                it.isRegularFile() &&
-                    isNotItself &&
-                    isNotSmallImage &&
-                    isNotDescriptionFile
-            }.singleOrNull {
-                val areEqual = Files.mismatch(it, imagePath) == -1L
-                areEqual
-            }
+    private fun createSmallVersion(
+        fileHashNamePath: Path,
+        imageXObject: PDImageXObject,
+    ) {
+        val smallImagePath =
+            fileHashNamePath.resolveSibling("${fileHashNamePath.nameWithoutExtension}$SMALL_IMAGE_SUFFIX.${fileHashNamePath.extension}")
+        val smallWidth = imageXObject.image.width / 2
+        val smallHeight = imageXObject.image.height / 2
+        val smallImage = imageXObject.image.getScaledInstance(smallWidth, smallHeight, Image.SCALE_SMOOTH)
+        val smallBufferedImage = BufferedImage(smallWidth, smallHeight, BufferedImage.TYPE_INT_RGB)
+        smallBufferedImage.graphics.drawImage(smallImage, 0, 0, null)
+        ImageIO.write(smallBufferedImage, fileHashNamePath.extension, smallImagePath.toFile())
+    }
 
     private fun fetchQuestions(): Map<String, String> =
         restClient
