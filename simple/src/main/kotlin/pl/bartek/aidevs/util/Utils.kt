@@ -121,7 +121,11 @@ fun String.executeCommand(vararg args: String): String {
     throw IllegalStateException(errorMessage)
 }
 
-fun RestClient.downloadFile(url: String, apiKey: String? = null, directory: Path): Path {
+fun RestClient.downloadFile(
+    url: String,
+    apiKey: String? = null,
+    directory: Path,
+): Path {
     val uriComponents =
         UriComponentsBuilder
             .fromHttpUrl(url)
@@ -133,7 +137,8 @@ fun RestClient.downloadFile(url: String, apiKey: String? = null, directory: Path
         return filePath
     }
 
-    val body = get()
+    val body =
+        get()
             .uri(uriComponents.toUriString(), apiKey)
             .headers { it.contentType = MediaType.APPLICATION_OCTET_STREAM }
             .retrieve()
