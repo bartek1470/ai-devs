@@ -10,4 +10,9 @@ data class ExtractedPdfImage(
     val hash: String,
     val filePath: Path,
     val filePathSmall: Path?,
-)
+) {
+    val filePathForDescribing: Path
+        get() {
+            return filePathSmall ?: filePath
+        }
+}
