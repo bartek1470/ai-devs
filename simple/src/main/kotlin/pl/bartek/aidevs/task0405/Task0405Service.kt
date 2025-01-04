@@ -547,7 +547,7 @@ class Task0405Service(
         val smallHeight = (originalHeight * ratio).toInt()
 
         val smallImage = imageXObject.image.getScaledInstance(smallWidth, smallHeight, Image.SCALE_SMOOTH)
-        val smallBufferedImage = BufferedImage(smallWidth, smallHeight, BufferedImage.TYPE_INT_RGB)
+        val smallBufferedImage = BufferedImage(smallWidth, smallHeight, BufferedImage.TYPE_INT_ARGB)
         smallBufferedImage.graphics.drawImage(smallImage, 0, 0, null)
         ImageIO.write(smallBufferedImage, fileHashNamePath.extension, smallImagePath.toFile())
         return smallImagePath
