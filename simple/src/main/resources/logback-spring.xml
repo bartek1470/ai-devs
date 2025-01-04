@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<configuration>
+    <!-- based on org/springframework/boot/logging/logback/base.xml -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <springProperty scope="context" name="LOG_FILE" source="logging.file.name"/>
+    <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+
+    <!-- based on org/springframework/boot/logging/logback/file-appender.xml -->
+    <springProperty scope="context" name="REQUESTS_LOG_FILE" source="logging.request-file.name"/>
+    <appender name="REQUESTS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${FILE_LOG_THRESHOLD}</level>
+        </filter>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>${FILE_LOG_CHARSET}</charset>
+        </encoder>
+        <file>${REQUESTS_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${REQUESTS_LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <cleanHistoryOnStart>${LOGBACK_ROLLINGPOLICY_CLEAN_HISTORY_ON_START:-false}</cleanHistoryOnStart>
+            <maxFileSize>${LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE:-10MB}</maxFileSize>
+            <totalSizeCap>${LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP:-0}</totalSizeCap>
+            <maxHistory>${LOGBACK_ROLLINGPOLICY_MAX_HISTORY:-7}</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <root>
+        <appender-ref ref="FILE"/>
+    </root>
+    <logger name="org.springframework.ai.chat.client.advisor"
+            additivity="false">
+        <appender-ref ref="REQUESTS_FILE"/>
+    </logger>
+    <logger name="pl.bartek.aidevs.config.LoggingRestClientInterceptor"
+            additivity="false">
+        <appender-ref ref="REQUESTS_FILE"/>
+    </logger>
+</configuration>

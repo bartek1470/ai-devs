@@ -111,9 +111,10 @@ logging:
   file:
     path: ./logs
     name: ${logging.file.path}/${spring.application.name}.log
-  pattern:
-    console: "" # disable console logging without logback.xml
+  request-file:
+    name: ${logging.file.path}/${spring.application.name}.request.log
   level:
+    root: info
     org:
       springframework:
         ai:
@@ -124,4 +125,5 @@ logging:
     pl:
       bartek:
         aidevs:
-          pl.bartek.aidevs.config.LoggingRestClientInterceptor: debug
+          config:
+            LoggingRestClientInterceptor: debug
