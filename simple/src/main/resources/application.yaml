@@ -110,9 +110,7 @@ aidevs:
 logging:
   file:
     path: ./logs
-    name: ${logging.file.path}/${spring.application.name}.log
-  request-file:
-    name: ${logging.file.path}/${spring.application.name}.request.log
+    name: ${logging.file.path}/${spring.application.name}
   level:
     root: info
     org:
@@ -120,10 +118,10 @@ logging:
         ai:
           chat:
             client:
-              advisor: debug
+              advisor: trace
     pl.bartek: debug
     pl:
       bartek:
         aidevs:
           config:
-            LoggingRestClientInterceptor: debug
+            LoggingRestClientInterceptor: trace
