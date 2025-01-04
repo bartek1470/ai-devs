@@ -24,9 +24,9 @@ class LoggingRestClientInterceptor : ClientHttpRequestInterceptor {
             exception = ex
         }
 
-        val isBinaryRequest = request.headers.contentType?.isCompatibleWith(MediaType.APPLICATION_OCTET_STREAM) ?: false
+        val isBinaryRequest = request.headers.contentType?.isBinary() ?: false
         val requestBody = if (isBinaryRequest) "[BINARY]" else String(body)
-        val isBinaryResponse = response?.headers?.contentType?.isCompatibleWith(MediaType.APPLICATION_OCTET_STREAM) ?: false
+        val isBinaryResponse = response?.headers?.contentType?.isBinary() ?: false
         val responseBody = if (isBinaryResponse) "[BINARY]" else response?.body?.readAllBytes()?.let { String(it) }
         log.debug {
             """
@@ -44,6 +44,13 @@ class LoggingRestClientInterceptor : ClientHttpRequestInterceptor {
     }
 
     private fun HttpHeaders.toMultilineString(): String = this.toMap().entries.joinToString("\n")
+
+    private fun MediaType.isBinary(): Boolean =
+        isCompatibleWith(MediaType.APPLICATION_OCTET_STREAM) ||
+            isCompatibleWith(MediaType.APPLICATION_PDF) ||
+            isCompatibleWith(MediaType.IMAGE_GIF) ||
+            isCompatibleWith(MediaType.IMAGE_PNG) ||
+            isCompatibleWith(MediaType.IMAGE_JPEG)
 
     companion object {
         private val log = KotlinLogging.logger { }
