@@ -12,7 +12,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.qdrant.client.QdrantClient
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.pdfbox.Loader
+import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
@@ -33,22 +35,14 @@ import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.course.TaskId
-import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
-import pl.bartek.aidevs.course.api.Task
-import pl.bartek.aidevs.util.ansiFormattedHuman
-import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
-import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
+import pl.bartek.aidevs.task0405.db.PdfFile
+import pl.bartek.aidevs.task0405.db.PdfImageResource
 import pl.bartek.aidevs.util.downloadFile
-import pl.bartek.aidevs.util.extractXmlRoot
-import pl.bartek.aidevs.util.print
-import pl.bartek.aidevs.util.println
 import java.awt.Image
 import java.awt.image.BufferedImage
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.time.Duration
 import java.util.UUID
 import javax.imageio.ImageIO
 import kotlin.io.path.Path
@@ -57,6 +51,8 @@ import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.notExists
+import kotlin.io.path.relativeToOrSelf
+import kotlin.math.min
 
 private const val IMAGE_DIMENSIONS_THRESHOLD = 1024
 private const val DESCRIPTION_FILE_EXTENSION = "xml"
@@ -78,7 +74,6 @@ class Task0405Service(
     private val qdrantClient: QdrantClient,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
-    private val objectMapper = objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
     private val xmlMapper: ObjectMapper =
         XmlMapper
             .builder()
@@ -94,13 +89,15 @@ class Task0405Service(
     }
 
     fun run(terminal: Terminal) {
-        val pdf = restClient.downloadFile(dataUrl, apiKey, cacheDir)
-        prepareDocumentsInVectorStore(pdf)
-        val questions = fetchQuestions()
-        val pdfResourcesPath = pdf.resolveSibling(pdf.nameWithoutExtension)
-        val pdfStructure = objectMapper.readValue<PdfStructure>(pdfResourcesPath.resolve("structure.json").toFile())
-        val answers =
-            questions.mapValues { (key, question) ->
+        val pdfPath = restClient.downloadFile(dataUrl, apiKey, cacheDir)
+        val pdf = transaction { PdfFile.new { filePath = pdfPath } }
+        addImages(pdf)
+
+//        prepareDocumentsInVectorStore(pdf)
+//        val questions = fetchQuestions()
+//        val pdfResourcesPath = pdf.resolveSibling(pdf.nameWithoutExtension)
+//        val answers =
+//            questions.mapValues { (key, question) ->
 //                val results: List<Document> =
 //                    vectorStore
 //                        .similaritySearch(
@@ -137,111 +134,112 @@ class Task0405Service(
 //                                }
 //                            }
 //                    }.distinct()
-
-                val context = pdfStructure.resources.mapNotNull { pdfResource ->
-                    if (pdfResource.type.startsWith("image")) {
-                        val imagePath = pdfResourcesPath.resolve("images").resolve(pdfResource.filename)
-                        val imageDescription =
-                            xmlMapper.readValue<ImageDescription>(
-                                imagePath.resolveSibling("${imagePath.fileName}.xml").toFile(),
-                            )
-                        val imageText = imageDescription.text?.takeIf { it.isNotBlank() }
-                        if (imageText == null) {
-                            null
-                        } else {
-                            buildString {
-                                append("Image description: ")
-                                append(imageDescription.description)
-                                append("\nText on the image: $imageText")
-                            }
-                        }
-                    } else {
-                        val textPath = pdfResourcesPath.resolve("text").resolve(pdfResource.filename)
-                        Files.readString(textPath)
-                    }
-                }
-
-                val contextDocuments =
-                    context
-                        .mapIndexed { index, doc ->
-                            "# Context $index:\n${doc.trim()}"
-                        }.joinToString("\n\n")
-
-                terminal.println("Context:".ansiFormattedSecondaryInfoTitle())
-                terminal.println("$contextDocuments\n\n".ansiFormattedSecondaryInfo())
-
-                terminal.println("$key: $question".ansiFormattedHuman())
-                val aiAnswer =
-                    chatService.sendToChat(
-                        listOf(
-                            SystemMessage(
-                                """
-                                |Answer the user's question. Below you have user's notes providing context for the question.
-                                |Those notes are from user's notebook that is some kind of diary.
-                                |Answer shortly with only the data user has requested, e.g. if asking about a year, answer only with a year.
-                                |Provide an answer for the user's question in `result` XML tag.
-                                |The answer has to be translated to Polish language.
-                                |The context might don't have the information but you need to answer with the most possible one.
-                                |There might me some clues in the context like a number from a book.
-                                |When you have a date, think about the context you have found and see if it alerts the found date.
-                                |Also try to think about events mentioned in the text, e.g. when something was invented.
-                                |
-                                |Firstly, try to think about the most possible answer. Describe what you know from the context and facts above.
-                                |After that reason why you think this is most possible answer.
-                                |Lastly, provide an answer for user's question in a way specified above.
-                                |
-                                |# Example
-                                |Users asks about current year. Although year 2005 was mentioned, it is not clear if it is current year. More possible is year 2001 which is mentioned in the end of the note since it's a diary.
-                                |<result>
-                                |2001
-                                |</result>
-                                |
-                                |$contextDocuments
-                                """.trimMargin(),
-                            ),
-                            UserMessage(question),
-                        ),
-                        chatOptions =
-                            FunctionCallingOptions
-                                .builder()
-                                .temperature(0.3)
-                                .model(OpenAiApi.ChatModel.GPT_4_O.value)
-                                .build(),
-                        responseReceived = { terminal.print(it) },
-                    )
-                terminal.println()
-                aiAnswer.extractXmlRoot()?.trim()
-            }
-
-        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers))
-        terminal.println(aiDevsAnswerResponse)
+//
+//                val context =
+//                    pdfStructure.resources.mapNotNull { pdfResource ->
+//                        if (pdfResource.type.startsWith("image")) {
+//                            val imagePath = pdfResourcesPath.resolve("images").resolve(pdfResource.filename)
+//                            val imageDescription =
+//                                xmlMapper.readValue<ImageDescription>(
+//                                    imagePath.resolveSibling("${imagePath.fileName}.xml").toFile(),
+//                                )
+//                            val imageText = imageDescription.text?.takeIf { it.isNotBlank() }
+//                            if (imageText == null) {
+//                                null
+//                            } else {
+//                                buildString {
+//                                    append("Image description: ")
+//                                    append(imageDescription.description)
+//                                    append("\nText on the image: $imageText")
+//                                }
+//                            }
+//                        } else {
+//                            val textPath = pdfResourcesPath.resolve("text").resolve(pdfResource.filename)
+//                            Files.readString(textPath)
+//                        }
+//                    }
+//
+//                val contextDocuments =
+//                    context
+//                        .mapIndexed { index, doc ->
+//                            "# Context $index:\n${doc.trim()}"
+//                        }.joinToString("\n\n")
+//
+//                terminal.println("Context:".ansiFormattedSecondaryInfoTitle())
+//                terminal.println("$contextDocuments\n\n".ansiFormattedSecondaryInfo())
+//
+//                terminal.println("$key: $question".ansiFormattedHuman())
+//                val aiAnswer =
+//                    chatService.sendToChat(
+//                        listOf(
+//                            SystemMessage(
+//                                """
+//                                |Answer the user's question. Below you have user's notes providing context for the question.
+//                                |Those notes are from user's notebook that is some kind of diary.
+//                                |Answer shortly with only the data user has requested, e.g. if asking about a year, answer only with a year.
+//                                |Provide an answer for the user's question in `result` XML tag.
+//                                |The answer has to be translated to Polish language.
+//                                |The context might don't have the information but you need to answer with the most possible one.
+//                                |There might me some clues in the context like a number from a book.
+//                                |When you have a date, think about the context you have found and see if it alerts the found date.
+//                                |Also try to think about events mentioned in the text, e.g. when something was invented.
+//                                |
+//                                |Firstly, try to think about the most possible answer. Describe what you know from the context and facts above.
+//                                |After that reason why you think this is most possible answer.
+//                                |Lastly, provide an answer for user's question in a way specified above.
+//                                |
+//                                |# Example
+//                                |Users asks about current year. Although year 2005 was mentioned, it is not clear if it is current year. More possible is year 2001 which is mentioned in the end of the note since it's a diary.
+//                                |<result>
+//                                |2001
+//                                |</result>
+//                                |
+//                                |$contextDocuments
+//                                """.trimMargin(),
+//                            ),
+//                            UserMessage(question),
+//                        ),
+//                        chatOptions =
+//                            FunctionCallingOptions
+//                                .builder()
+//                                .temperature(0.3)
+//                                .model(OpenAiApi.ChatModel.GPT_4_O.value)
+//                                .build(),
+//                        responseReceived = { terminal.print(it) },
+//                    )
+//                terminal.println()
+//                aiAnswer.extractXmlRoot()?.trim()
+//            }
+//
+//        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers))
+//        terminal.println(aiDevsAnswerResponse)
     }
 
-    private fun prepareDocumentsInVectorStore(pdf: Path) {
-        val documentCountInDb = qdrantClient.countAsync(collectionName, Duration.ofSeconds(5)).get()
-        if (documentCountInDb == 0L) {
-            val imageDocuments = createDocumentsFromEmbeddedImages(pdf)
-            val textDocuments = createDocumentsFromText(pdf)
-            val allDocuments = textDocuments + imageDocuments
-
-            val pdfStructure =
-                allDocuments
-                    .map { doc ->
-                        val filename = doc.metadata[PagePdfDocumentReader.METADATA_FILE_NAME] as String
-                        val pages = doc.metadata[PagePdfDocumentReader.METADATA_START_PAGE_NUMBER].toString()
-                        val type = doc.metadata["type"]?.toString()
-                        PdfResource(filename, pages.split(",").map { it.toInt() }, type ?: "text")
-                    }.let {
-                        PdfStructure(it)
-                    }
-            objectMapper.writeValue(pdf.resolveSibling(pdf.nameWithoutExtension).resolve("structure.json").toFile(), pdfStructure)
-
-            log.info { "Adding ${allDocuments.size} documents to vector store" }
-            vectorStore.add(allDocuments)
-        } else {
-            log.info { "Collection exists and is not empty. Skipping adding documents" }
-        }
-    }
+//    private fun prepareDocumentsInVectorStore(pdf: Path) {
+//        val documentCountInDb = qdrantClient.countAsync(collectionName, Duration.ofSeconds(5)).get()
+//        if (documentCountInDb == 0L) {
+//            val imageDocuments = addImages(pdf)
+//            val textDocuments = createDocumentsFromText(pdf)
+//            val allDocuments = textDocuments + imageDocuments
+//
+//            val pdfStructure =
+//                allDocuments
+//                    .map { doc ->
+//                        val filename = doc.metadata[PagePdfDocumentReader.METADATA_FILE_NAME] as String
+//                        val pages = doc.metadata[PagePdfDocumentReader.METADATA_START_PAGE_NUMBER].toString()
+//                        val type = doc.metadata["type"]?.toString()
+//                        PdfResource(filename, pages.split(",").map { it.toInt() }, type ?: "text")
+//                    }.let {
+//                        PdfStructure(it)
+//                    }
+// //            objectMapper.writeValue(pdf.resolveSibling(pdf.nameWithoutExtension).resolve("structure.json").toFile(), pdfStructure)
+//
+//            log.info { "Adding ${allDocuments.size} documents to vector store" }
+//            vectorStore.add(allDocuments)
+//        } else {
+//            log.info { "Collection exists and is not empty. Skipping adding documents" }
+//        }
+//    }
 
     fun createDocumentsFromText(pdf: Path): List<Document> {
         log.debug { "Reading text from $pdf" }
@@ -299,13 +297,44 @@ class Task0405Service(
         }
     }
 
-    fun createDocumentsFromEmbeddedImages(pdf: Path): List<Document> {
-        log.debug { "Creating documents from embedded images in $pdf" }
-        val pdfResourcesDir: Path = cacheDir.resolve(pdf.nameWithoutExtension).resolve("images")
+    fun addImages(pdf: PdfFile) {
+        val pdfResourcesDir: Path = cacheDir.resolve(pdf.resourcesDir)
         Files.createDirectories(pdfResourcesDir)
-        val imageResources = extractImagesFromPdf(pdf, pdfResourcesDir)
-        val uniqueResources = removeDuplicates(imageResources)
-        return toDocuments(uniqueResources)
+        val imageResources = extractImages(pdf, pdfResourcesDir)
+        val describedImages =
+            imageResources.map { image ->
+                val description = ""
+                val text = ""
+                DescribedExtractedImage(image, description, text)
+            }
+
+        transaction {
+            pdf.refresh()
+            describedImages.forEach { describedImage ->
+                val filePath =
+                    describedImage.image.filePath
+                        .absolute()
+                        .relativeToOrSelf(cacheDir)
+                        .toString()
+                val filePathSmall =
+                    describedImage.image.filePathSmall
+                        ?.absolute()
+                        ?.relativeToOrSelf(cacheDir)
+                        ?.toString()
+                PdfImageResource.new {
+                    pdfFile = pdf
+                    index = describedImage.image.indexes
+                    pages = describedImage.image.pages
+                    name = describedImage.image.name
+                    extension = describedImage.image.extension
+                    hash = describedImage.image.hash
+                    this.filePath = filePath
+                    this.filePathSmall = filePathSmall
+                    this.description = describedImage.description
+                    imageText = describedImage.text
+                }
+            }
+        }
     }
 
     private fun toDocuments(uniqueResources: List<ImageResource>): List<Document> =
@@ -424,65 +453,104 @@ class Task0405Service(
         }
     }
 
-    private fun removeDuplicates(imageResources: List<ImageResource>): List<ImageResource> {
-        val uniquePaths = imageResources.map { it.image }.toSet()
-
-        return uniquePaths.map { imagePath ->
-            val allPageNumbers =
-                imageResources
-                    .filter { imageResource -> imageResource.image == imagePath }
-                    .map { it.pageNumbers }
-                    .flatten()
-                    .toSet()
-            ImageResource(imagePath, allPageNumbers)
-        }
-    }
-
-    private fun extractImagesFromPdf(
-        pdf: Path,
+    private fun extractImages(
+        pdf: PdfFile,
         pdfResourcesDir: Path,
-    ): List<ImageResource> {
+    ): List<ExtractedPdfImage> {
         log.debug { "Extracting images from $pdf" }
-        return Loader.loadPDF(pdf.toFile()).use { pdfDocument ->
-            pdfDocument.pages
-                .mapIndexed { index, page ->
-                    log.debug { "Processing page $index" }
-                    page.resources
-                        .xObjectNames
-                        .asSequence()
-                        .map { name -> page.resources.getXObject(name) }
-                        .filterIsInstance(PDImageXObject::class.java)
-                        .map { imageXObject ->
-                            val extension: String = imageXObject.suffix ?: "jpg"
-                            val filePath = pdfResourcesDir.resolve("${UUID.randomUUID()}.$extension")
-                            ImageIO.write(imageXObject.image, extension, filePath.toFile())
-                            val hash: String = Files.newInputStream(filePath).use { DigestUtils.md5Hex(it) }
-                            val fileHashNamePath = filePath.resolveSibling("$hash.$extension")
-                            // pdf can contain the same image multiple times
-                            Files.move(filePath, fileHashNamePath, StandardCopyOption.REPLACE_EXISTING)
-                            if (imageXObject.image.width > IMAGE_DIMENSIONS_THRESHOLD ||
-                                imageXObject.image.height > IMAGE_DIMENSIONS_THRESHOLD
-                            ) {
-                                createSmallVersion(fileHashNamePath, imageXObject)
-                            }
-                            fileHashNamePath
-                        }.map { ImageResource(it, setOf(index)) }
-                }.flatMap { it }
-        }
+        return Loader
+            .loadPDF(pdf.filePath.toFile())
+            .use { pdfDocument ->
+                pdfDocument.pages
+                    .mapIndexed { pageIndex, page ->
+                        log.debug { "Processing page $pageIndex" }
+                        extractImagesFromPage(page, pdfResourcesDir, pageIndex)
+                    }.flatMap { it }
+            }.groupBy { it.hash }
+            .values
+            .map { imagesWithSameHash ->
+                imagesWithSameHash.reduce { acc, image ->
+                    acc.copy(
+                        indexes = acc.indexes + image.indexes,
+                        pages = acc.pages + image.pages,
+                        filePathSmall =
+                            acc.filePathSmall ?: image.filePathSmall,
+                    )
+                }
+            }.toList()
     }
+
+    private fun extractImagesFromPage(
+        page: PDPage,
+        pdfResourcesDir: Path,
+        pageIndex: Int,
+    ) = page.resources
+        .xObjectNames
+        .asSequence()
+        .map { name -> name to page.resources.getXObject(name) }
+        .filter { (_, xObject) -> xObject is PDImageXObject }
+        .map { (name, xObject) -> name to xObject as PDImageXObject }
+        .mapIndexed { index, (name, imageXObject) ->
+            val extension: String = imageXObject.suffix ?: "jpg"
+            val filePath = pdfResourcesDir.resolve("${UUID.randomUUID()}.$extension")
+            ImageIO.write(imageXObject.image, extension, filePath.toFile())
+
+            val hash: String = Files.newInputStream(filePath).use { DigestUtils.md5Hex(it) }
+            val fileHashNamePath = filePath.resolveSibling("$hash.$extension")
+            if (fileHashNamePath.exists()) {
+                log.debug { "File with hash $hash already exists. Deleting resource ${name.name} in path $filePath" }
+                Files.delete(filePath)
+                ExtractedPdfImage(
+                    setOf(index),
+                    setOf(pageIndex),
+                    name.name,
+                    extension,
+                    hash,
+                    fileHashNamePath,
+                    null,
+                )
+            } else {
+                Files.move(filePath, fileHashNamePath)
+                val smallImagePath =
+                    if (imageXObject.image.width > IMAGE_DIMENSIONS_THRESHOLD ||
+                        imageXObject.image.height > IMAGE_DIMENSIONS_THRESHOLD
+                    ) {
+                        createSmallVersion(fileHashNamePath, imageXObject)
+                    } else {
+                        null
+                    }
+                ExtractedPdfImage(
+                    setOf(index),
+                    setOf(pageIndex),
+                    name.name,
+                    extension,
+                    hash,
+                    fileHashNamePath,
+                    smallImagePath,
+                )
+            }
+        }
 
     private fun createSmallVersion(
         fileHashNamePath: Path,
         imageXObject: PDImageXObject,
-    ) {
+    ): Path {
         val smallImagePath =
             fileHashNamePath.resolveSibling("${fileHashNamePath.nameWithoutExtension}$SMALL_IMAGE_SUFFIX.${fileHashNamePath.extension}")
-        val smallWidth = imageXObject.image.width / 2
-        val smallHeight = imageXObject.image.height / 2
+
+        val originalWidth = imageXObject.image.width
+        val originalHeight = imageXObject.image.height
+        val widthRatio = IMAGE_DIMENSIONS_THRESHOLD / originalWidth.toDouble()
+        val heightRatio = IMAGE_DIMENSIONS_THRESHOLD / originalHeight.toDouble()
+        val ratio = min(widthRatio, heightRatio)
+        val smallWidth = (originalWidth * ratio).toInt()
+        val smallHeight = (originalHeight * ratio).toInt()
+
         val smallImage = imageXObject.image.getScaledInstance(smallWidth, smallHeight, Image.SCALE_SMOOTH)
         val smallBufferedImage = BufferedImage(smallWidth, smallHeight, BufferedImage.TYPE_INT_RGB)
         smallBufferedImage.graphics.drawImage(smallImage, 0, 0, null)
         ImageIO.write(smallBufferedImage, fileHashNamePath.extension, smallImagePath.toFile())
+        return smallImagePath
     }
 
     private fun fetchQuestions(): Map<String, String> =

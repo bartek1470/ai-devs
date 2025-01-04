@@ -10,6 +10,10 @@ spring:
       enabled: false
     history:
       name: ${logging.file.path}/${spring.application.name}.history.log
+  datasource:
+    url: "jdbc:sqlite:${aidevs.cache-dir}/aidevs.db"
+  exposed:
+    generate-ddl: true
   ai:
     openai:
       chat:

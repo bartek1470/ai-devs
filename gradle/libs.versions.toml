@@ -1,21 +1,23 @@
 [versions]
 apache-commons = "1.17.1"
+exposed="0.57.0"
 java = "21"
 jsoup = "1.18.1"
 kotlin = "1.9.25"
 kotlin-coroutines = "1.9.0"
 kotlin-logging = "7.0.0"
 kotlin-spring = "1.9.25"
-pdfbox="3.0.3"
 spotless = "7.0.0.BETA4"
 spring-ai = "1.0.0-M5"
 spring-boot = "3.3.5"
 spring-dependencyManagement = "1.1.6"
 spring-shell = "3.3.3"
+sqlite="3.47.1.0"
 zip4j = "2.11.5"
 
 [libraries]
 apache-commons-codec = { group = "commons-codec", name = "commons-codec", version.ref = "apache-commons" }
+exposed-spring-boot-starter = { group = "org.jetbrains.exposed", name = "exposed-spring-boot-starter", version.ref = "exposed" }
 jackson-dataformat-xml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-xml" }
 jackson-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
@@ -37,6 +39,7 @@ spring-boot-starter-web = { group = "org.springframework.boot", name = "spring-b
 spring-boot-test-starter = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
 spring-shell-bom = { group = "org.springframework.shell", name = "spring-shell-dependencies", version.ref = "spring-shell" }
 spring-shell-starter = { group = "org.springframework.shell", name = "spring-shell-starter" }
+sqlite-jdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }
 zip4j = {group = "net.lingala.zip4j", name = "zip4j", version.ref = "zip4j"}
 
 [plugins]

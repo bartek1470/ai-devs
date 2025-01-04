@@ -47,6 +47,8 @@ dependencies {
     implementation(libs.jackson.kotlin)
     implementation(libs.jackson.dataformat.xml)
     implementation(libs.spring.boot.starter.data.neo4j)
+    implementation(libs.exposed.spring.boot.starter)
+    implementation(libs.sqlite.jdbc)
     implementation(libs.spring.ai.openai.starter)
     implementation(libs.spring.ai.qdrant.starter)
     implementation(libs.spring.ai.ollama)
