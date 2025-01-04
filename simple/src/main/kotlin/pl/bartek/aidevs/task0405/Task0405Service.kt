@@ -498,7 +498,7 @@ class Task0405Service(
             val hash: String = Files.newInputStream(filePath).use { DigestUtils.md5Hex(it) }
             val fileHashNamePath = filePath.resolveSibling("$hash.$extension")
             if (fileHashNamePath.exists()) {
-                log.debug { "File with hash $hash already exists. Deleting resource ${name.name} in path $filePath" }
+                log.debug { "File with hash $hash already exists. Deleting just extracted resource ${name.name} in path $filePath" }
                 Files.delete(filePath)
                 ExtractedPdfImage(
                     setOf(index),
