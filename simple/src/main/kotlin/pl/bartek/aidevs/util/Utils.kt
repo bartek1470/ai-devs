@@ -12,9 +12,12 @@ import org.springframework.http.MediaType
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.course.api.AiDevsAnswerResponse
+import java.awt.Image
+import java.awt.image.BufferedImage
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
+import kotlin.math.min
 
 private val log = KotlinLogging.logger {}
 private val AI_DEVS_FLAG_REGEX = "\\{\\{FLG:(.*)}}".toRegex()
@@ -145,4 +148,17 @@ fun RestClient.downloadFile(
             .body(ByteArray::class.java)!!
     Files.write(filePath, body)
     return filePath
+}
+
+fun BufferedImage.resizeToFitSquare(sideSize: Int): BufferedImage {
+    val widthRatio = sideSize / width.toDouble()
+    val heightRatio = sideSize / height.toDouble()
+    val ratio = min(widthRatio, heightRatio)
+    val resizedWidth = (width * ratio).toInt()
+    val resizedHeight = (height * ratio).toInt()
+
+    val resizedImage = getScaledInstance(resizedWidth, resizedHeight, Image.SCALE_SMOOTH)
+    val resizedBufferedImage = BufferedImage(resizedWidth, resizedHeight, BufferedImage.TYPE_INT_ARGB)
+    resizedBufferedImage.graphics.drawImage(resizedImage, 0, 0, null)
+    return resizedBufferedImage
 }

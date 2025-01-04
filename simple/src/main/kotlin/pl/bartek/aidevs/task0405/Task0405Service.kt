@@ -540,20 +540,11 @@ class Task0405Service(
         imageXObject: PDImageXObject,
     ): Path {
         val smallImagePath =
-            fileHashNamePath.resolveSibling("${fileHashNamePath.nameWithoutExtension}$SMALL_IMAGE_SUFFIX.${fileHashNamePath.extension}")
-
-        val originalWidth = imageXObject.image.width
-        val originalHeight = imageXObject.image.height
-        val widthRatio = IMAGE_DIMENSIONS_THRESHOLD / originalWidth.toDouble()
-        val heightRatio = IMAGE_DIMENSIONS_THRESHOLD / originalHeight.toDouble()
-        val ratio = min(widthRatio, heightRatio)
-        val smallWidth = (originalWidth * ratio).toInt()
-        val smallHeight = (originalHeight * ratio).toInt()
-
-        val smallImage = imageXObject.image.getScaledInstance(smallWidth, smallHeight, Image.SCALE_SMOOTH)
-        val smallBufferedImage = BufferedImage(smallWidth, smallHeight, BufferedImage.TYPE_INT_ARGB)
-        smallBufferedImage.graphics.drawImage(smallImage, 0, 0, null)
-        ImageIO.write(smallBufferedImage, fileHashNamePath.extension, smallImagePath.toFile())
+            fileHashNamePath.resolveSibling(
+                "${fileHashNamePath.nameWithoutExtension}$SMALL_IMAGE_SUFFIX.${fileHashNamePath.extension}",
+            )
+        val resizedImage = imageXObject.image.resizeToFitSquare(IMAGE_DIMENSIONS_THRESHOLD)
+        ImageIO.write(resizedImage, fileHashNamePath.extension, smallImagePath.toFile())
         return smallImagePath
     }
 
