@@ -158,7 +158,7 @@ fun BufferedImage.resizeToFitSquare(sideSize: Int): BufferedImage {
     val resizedHeight = (height * ratio).toInt()
 
     val resizedImage = getScaledInstance(resizedWidth, resizedHeight, Image.SCALE_SMOOTH)
-    val resizedBufferedImage = BufferedImage(resizedWidth, resizedHeight, BufferedImage.TYPE_INT_ARGB)
+    val resizedBufferedImage = BufferedImage(resizedWidth, resizedHeight, type)
     resizedBufferedImage.graphics.drawImage(resizedImage, 0, 0, null)
     return resizedBufferedImage
 }
