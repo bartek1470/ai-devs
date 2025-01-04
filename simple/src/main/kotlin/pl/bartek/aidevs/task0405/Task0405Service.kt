@@ -27,6 +27,7 @@ import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
@@ -34,6 +35,8 @@ import org.springframework.http.MediaTypeFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.config.Profile.OPENAI
+import pl.bartek.aidevs.config.Profile.QDRANT
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.task0405.db.PdfFile
@@ -57,6 +60,7 @@ import kotlin.math.min
 private const val IMAGE_DIMENSIONS_THRESHOLD = 1024
 private const val DESCRIPTION_FILE_EXTENSION = "xml"
 
+@Profile(QDRANT, OPENAI)
 @Service
 class Task0405Service(
     @Value("\${aidevs.cache-dir}") cacheDir: String,
