@@ -5,7 +5,6 @@ import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.id.EntityID
 import java.nio.file.Path
 import java.util.UUID
-import kotlin.io.path.Path
 import kotlin.io.path.nameWithoutExtension
 
 class PdfFile(
@@ -14,8 +13,8 @@ class PdfFile(
     companion object : EntityClass<UUID, PdfFile>(PdfFileTable)
 
     var filePath by PdfFileTable.filePath
-    val text by PdfTextResource backReferencedOn PdfTextResourceTable.pdfFile
-    val images by PdfImageResource backReferencedOn PdfImageResourceTable.pdfFile
+    val text by PdfTextResource referrersOn PdfTextResourceTable.pdfFile
+    val images by PdfImageResource referrersOn PdfImageResourceTable.pdfFile
 
     val resourcesDir: Path
         get() {
