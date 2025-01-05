@@ -106,8 +106,8 @@ fun String.extractXmlRoot(xmlTagName: String = "result"): String? {
     val xmlStartTag = "<$xmlTagName>"
     val xmlEndTag = "</$xmlTagName>"
     val startIndex = indexOf(xmlStartTag, ignoreCase = true)
-    val endIndex = indexOf(xmlEndTag, ignoreCase = true) + xmlEndTag.length
-    return if (startIndex < 0 || endIndex < 0) null else substring(startIndex, endIndex)
+    val endIndex = indexOf(xmlEndTag, ignoreCase = true)
+    return if (startIndex < 0 || endIndex < 0) null else substring(startIndex, endIndex + xmlEndTag.length)
 }
 
 fun String.executeCommand(vararg args: String): String {
