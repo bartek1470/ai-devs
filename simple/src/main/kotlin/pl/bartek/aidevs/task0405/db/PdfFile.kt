@@ -20,4 +20,8 @@ class PdfFile(
         get() {
             return filePath.resolveSibling(filePath.fileName.nameWithoutExtension)
         }
+
+    override fun toString(): String {
+        return "PdfFile(filePath=$filePath)"
+    }
 }

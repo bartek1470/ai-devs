@@ -1,17 +1,25 @@
 package pl.bartek.aidevs.task0405
 
-import com.fasterxml.jackson.core.JacksonException
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.qdrant.client.QdrantClient
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.pdfbox.Loader
+import org.apache.pdfbox.cos.COSName
+import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -44,10 +52,12 @@ import pl.bartek.aidevs.task0405.db.PdfFile
 import pl.bartek.aidevs.task0405.db.PdfFileTable
 import pl.bartek.aidevs.task0405.db.PdfImageResource
 import pl.bartek.aidevs.util.downloadFile
+import pl.bartek.aidevs.util.println
 import pl.bartek.aidevs.util.resizeToFitSquare
+import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.UUID
+import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 import kotlin.io.path.Path
 import kotlin.io.path.absolute
@@ -58,6 +68,7 @@ import kotlin.io.path.notExists
 import kotlin.io.path.relativeToOrSelf
 
 private const val IMAGE_DIMENSIONS_THRESHOLD = 1024
+private const val SMALL_IMAGE_SUFFIX = "_small"
 
 @Profile(QDRANT, OPENAI)
 @Service
@@ -92,7 +103,9 @@ class Task0405Service(
     }
 
     fun run(terminal: Terminal) {
+        terminal.println("Downloading pdf file from $dataUrl")
         val pdfPath = restClient.downloadFile(dataUrl, apiKey, cacheDir)
+        terminal.println("Obtaining PDF file from DB")
         val pdf =
             transaction {
                 PdfFile
@@ -104,7 +117,9 @@ class Task0405Service(
                         .new { filePath = pdfPath }
                         .also { log.info { "Created new pdf file in db: ${it.id}" } }
             }
+        terminal.println("Processing image resources from PDF")
         appendMissingImages(pdf)
+        terminal.println("Creating documents")
         fetchDocuments(pdf)
 
 //        prepareDocumentsInVectorStore(pdf)
@@ -314,53 +329,60 @@ class Task0405Service(
     fun appendMissingImages(pdf: PdfFile) {
         val pdfResourcesDir: Path = cacheDir.resolve(pdf.resourcesDir)
         Files.createDirectories(pdfResourcesDir)
-        val imageResources = extractImages(pdf, pdfResourcesDir)
-        // if an image file was deleted on a disk but wasn't in db, then it won't be processed
-        val missingImageResources =
-            transaction {
-                pdf.refresh()
-                imageResources.filter { extractedImage ->
-                    pdf.images.none { dbImage ->
-                        extractedImage.hash == dbImage.hash
+
+        Executors.newFixedThreadPool(4).asCoroutineDispatcher().use { dispatcher ->
+
+            val pdfImageList = runBlocking(dispatcher) { extractImages(pdf, pdfResourcesDir) }
+            val missingImages =
+                transaction {
+                    pdf.refresh()
+                    pdfImageList.filter { pdfImage ->
+                        pdf.images.none { dbImage ->
+                            pdfImage.extractedImage.hash == dbImage.hash
+                        }
                     }
                 }
-            }
 
-        val describedImages = missingImageResources.map { extractedImage -> describeExtractedImage(extractedImage) }
-        transaction {
-            pdf.refresh()
-            describedImages.forEach { describedImage ->
-                val filePath =
-                    describedImage.image.filePath
-                        .absolute()
-                        .relativeToOrSelf(cacheDir)
-                        .toString()
-                val filePathSmall =
-                    describedImage.image.filePathSmall
-                        ?.absolute()
-                        ?.relativeToOrSelf(cacheDir)
-                        ?.toString()
-                PdfImageResource.new {
-                    pdfFile = pdf
-                    index = describedImage.image.indexes
-                    pages = describedImage.image.pages
-                    name = describedImage.image.name
-                    extension = describedImage.image.extension
-                    hash = describedImage.image.hash
-                    this.filePath = filePath
-                    this.filePathSmall = filePathSmall
-                    this.description = describedImage.description
-                    imageText = describedImage.text
+            val newDescribedImages =
+                runBlocking(dispatcher) {
+                    missingImages.map { image -> describeImage(image) }.awaitAll()
+                }
+            transaction {
+                pdf.refresh()
+                newDescribedImages.forEach { describedImage ->
+                    val filePath =
+                        describedImage.dumpedImage.filePath
+                            .absolute()
+                            .relativeToOrSelf(cacheDir)
+                            .toString()
+                    val filePathSmall =
+                        describedImage.dumpedImage.filePathSmall
+                            ?.absolute()
+                            ?.relativeToOrSelf(cacheDir)
+                            ?.toString()
+                    PdfImageResource.new {
+                        pdfFile = pdf
+                        pages = describedImage.dumpedImage.extractedImage.pages
+                        name = describedImage.dumpedImage.extractedImage.name
+                        extension = describedImage.dumpedImage.extractedImage.extension
+                        hash = describedImage.dumpedImage.extractedImage.hash
+                        this.filePath = filePath
+                        this.filePathSmall = filePathSmall
+                        this.description = describedImage.description
+                    }
                 }
             }
         }
     }
 
-    private fun describeExtractedImage(image: ExtractedPdfImage): DescribedExtractedImage {
-        val resource = PathResource(image.filePathForDescribing)
-        val (description, text) = generateImageDescription(resource)
-        return DescribedExtractedImage(image, description.trim(), text?.trim())
-    }
+    private suspend fun describeImage(image: DumpedPdfImage): Deferred<DescribedImage> =
+        coroutineScope {
+            val resource = PathResource(image.filePathForDescribing)
+            async {
+                val description = generateImageDescription(resource).await()
+                DescribedImage(image, description.trim())
+            }
+        }
 
     private fun fetchDocuments(pdf: PdfFile): List<Document> {
         val imageResources =
@@ -409,149 +431,139 @@ class Task0405Service(
 //        }
     }
 
-    private fun generateImageDescription(image: Resource): ImageDescription {
-        log.info { "Generating image description for image $image" }
-        val media =
-            buildList {
-                val mediaType =
-                    MediaTypeFactory.getMediaType(image).orElseThrow {
-                        throw UnsupportedOperationException("Unsupported media type for image $image")
-                    }
-                add(Media(mediaType, image))
-            }
+    private suspend fun generateImageDescription(image: Resource): Deferred<String> =
+        coroutineScope {
+            log.info { "Generating image description for image $image" }
+            val media =
+                buildList {
+                    val mediaType =
+                        MediaTypeFactory.getMediaType(image).orElseThrow {
+                            throw UnsupportedOperationException("Unsupported media type for image $image")
+                        }
+                    add(Media(mediaType, image))
+                }
 
-        val content =
-            chatService.sendToChat(
-                listOf(
-                    UserMessage(
-                        """
-                        Create a XML with `description` and `text` tags inside `image` XML root element.
-                        1. The `description` tag has to contain description what appears in the image. The description has to be translated to Polish language.
-                        2. Next read the text in the image like you would be an OCR tool and include it in XML tag `text`. It's possible there would be no text in the image.
-                            In `text` XML tag, include only text in the image and nothing else.
-                        
-                        DO NOT output anything else than the XML.
-                        DO output only XML structure without any additional formatting, like markdown.
-                        
-                        Example:
-                        <image>
-                        <description>
-                        To jest obraz notatki. Notatka posiada rysunek drzewa na marginesie, w prawym górnym rogu. Obok drzewa widnieje napis: "To było najstarsze drzewo w naszym mieście.". Tekst notatki: "Kiedy byłem dzieckiem, było tam duże, stare drzewo. Teraz zostało ono wycięte i powstaje tu blok."
-                        <description>
-                        <text>
-                        To było najstarsze drzewo w naszym mieście.
-                        Kiedy byłem dzieckiem, było tam duże, stare drzewo. Teraz zostało ono wycięte i powstaje tu blok.
-                        </text>
-                        </image>
-                        """.trimIndent(),
-                        media,
+            async(Dispatchers.IO) {
+                chatService.sendToChat(
+                    listOf(
+                        UserMessage(
+                            """
+                            Describe what is in the image and read a text that might appear on the image, prioritizing the recognition of text written in the Polish language.
+                            """.trimIndent(),
+                            media,
+                        ),
                     ),
-                ),
-                chatOptions =
-                    FunctionCallingOptions
-                        .builder()
-                        .temperature(0.0)
-                        .model(OpenAiApi.ChatModel.GPT_4_O.value)
-                        .build(),
-            )
-
-        return try {
-            xmlMapper.readValue<ImageDescription>(content)
-        } catch (e: JacksonException) {
-            log.error { "Cannot parse generated XML description of $image. The response:\n$content" }
-            throw IllegalStateException("Cannot extract XML from AI response", e)
+                    chatOptions =
+                        FunctionCallingOptions
+                            .builder()
+                            .temperature(0.0)
+                            .model("moondream:1.8b")
+                            .build(),
+                )
+            }
         }
-    }
 
     private fun extractImages(
         pdf: PdfFile,
         pdfResourcesDir: Path,
-    ): List<ExtractedPdfImage> {
+    ): List<DumpedPdfImage> {
         log.debug { "Extracting images from $pdf" }
-        return Loader
-            .loadPDF(pdf.filePath.toFile())
-            .use { pdfDocument ->
-                pdfDocument.pages
-                    .mapIndexed { pageIndex, page ->
-                        log.debug { "Processing page $pageIndex" }
-                        extractImagesFromPage(page, pdfResourcesDir, pageIndex)
-                    }.flatMap { it }
-            }.groupBy { it.hash }
-            .values
-            .map { imagesWithSameHash ->
-                imagesWithSameHash.reduce { acc, image ->
-                    acc.copy(
-                        indexes = acc.indexes + image.indexes,
-                        pages = acc.pages + image.pages,
-                        filePathSmall =
-                            acc.filePathSmall ?: image.filePathSmall,
-                    )
+        return runBlocking {
+            Loader
+                .loadPDF(pdf.filePath.toFile())
+                .use { pdfDocument ->
+                    pdfDocument.pages
+                        .flatMapIndexed { pageIndex, page ->
+                            log.debug { "Processing page $pageIndex" }
+                            extractImagesWithHashes(page, pageIndex)
+                        }.groupBy { it.hash }
+                        .values
+                        .map { imagesWithSameHash ->
+                            val pages = imagesWithSameHash.flatMap { it.pages }.toSet()
+                            imagesWithSameHash.first().copy(pages = pages)
+                        }.map { extractedImage ->
+                            dumpPdfImage(pdfDocument, extractedImage, pdfResourcesDir)
+                        }
                 }
-            }.toList()
+        }
     }
 
-    private fun extractImagesFromPage(
-        page: PDPage,
+    private suspend fun dumpPdfImage(
+        pdfDocument: PDDocument,
+        extractedImage: ExtractedPdfImage,
         pdfResourcesDir: Path,
-        pageIndex: Int,
-    ) = page.resources
-        .xObjectNames
-        .asSequence()
-        .map { name -> name to page.resources.getXObject(name) }
-        .filter { (_, xObject) -> xObject is PDImageXObject }
-        .map { (name, xObject) -> name to xObject as PDImageXObject }
-        .mapIndexed { index, (name, imageXObject) ->
-            val extension: String =
-                imageXObject.suffix ?: throw IllegalStateException("Missing image extension for image $name on page $pageIndex")
-            val filePath = pdfResourcesDir.resolve("${UUID.randomUUID()}.$extension")
-            ImageIO.write(imageXObject.image, extension, filePath.toFile())
+    ): DumpedPdfImage {
+        val imageXObject = (
+            pdfDocument
+                .getPage(extractedImage.pages.first())
+                .resources
+                .getXObject(COSName.getPDFName(extractedImage.name))
+                .takeIf { it is PDImageXObject }
+                ?.let { it as PDImageXObject }
+                ?: throw IllegalStateException("${extractedImage.name} is not an image")
+        )
 
-            val hash: String = Files.newInputStream(filePath).use { DigestUtils.md5Hex(it) }
-            val fileHashNamePath = filePath.resolveSibling("$hash.$extension")
-            if (fileHashNamePath.exists()) {
-                log.debug { "File with hash $hash already exists. Deleting just extracted resource ${name.name} in path $filePath" }
-                Files.delete(filePath)
-                ExtractedPdfImage(
-                    setOf(index),
-                    setOf(pageIndex),
-                    name.name,
-                    extension,
-                    hash,
-                    fileHashNamePath,
-                    null,
-                )
-            } else {
-                Files.move(filePath, fileHashNamePath)
-                val smallImagePath =
-                    if (imageXObject.image.width > IMAGE_DIMENSIONS_THRESHOLD ||
-                        imageXObject.image.height > IMAGE_DIMENSIONS_THRESHOLD
-                    ) {
-                        createSmallVersion(fileHashNamePath, imageXObject)
-                    } else {
-                        null
-                    }
-                ExtractedPdfImage(
-                    setOf(index),
-                    setOf(pageIndex),
-                    name.name,
-                    extension,
-                    hash,
-                    fileHashNamePath,
-                    smallImagePath,
-                )
+        val filePath = pdfResourcesDir.resolve("${extractedImage.hash}.${extractedImage.extension}")
+        if (filePath.notExists()) {
+            withContext(Dispatchers.IO) {
+                ImageIO.write(imageXObject.image, extractedImage.extension, filePath.toFile())
             }
         }
 
-    private fun createSmallVersion(
-        fileHashNamePath: Path,
+        val smallImagePath =
+            if (imageXObject.image.width > IMAGE_DIMENSIONS_THRESHOLD ||
+                imageXObject.image.height > IMAGE_DIMENSIONS_THRESHOLD
+            ) {
+                createSmallVersion(filePath, imageXObject)
+            } else {
+                null
+            }
+        return DumpedPdfImage(extractedImage, filePath, smallImagePath)
+    }
+
+    private fun extractImagesWithHashes(
+        page: PDPage,
+        pageIndex: Int,
+    ): List<ExtractedPdfImage> =
+        page.resources
+            .xObjectNames
+            .asSequence()
+            .map { name -> name to page.resources.getXObject(name) }
+            .filter { (_, xObject) -> xObject is PDImageXObject }
+            .map { (name, xObject) -> name to xObject as PDImageXObject }
+            .map { (name, imageXObject) ->
+                val extension: String =
+                    imageXObject.suffix
+                        ?: throw IllegalStateException("Missing image extension for image $name on page $pageIndex")
+
+                val hash =
+                    ByteArrayOutputStream().use { outStream ->
+                        ImageIO.write(imageXObject.image, extension, outStream)
+                        DigestUtils.md5Hex(outStream.toByteArray())
+                    }
+                ExtractedPdfImage(
+                    pages = setOf(pageIndex),
+                    name = name.name,
+                    extension = extension,
+                    hash = hash,
+                )
+            }.toList()
+
+    private suspend fun createSmallVersion(
+        filePath: Path,
         imageXObject: PDImageXObject,
     ): Path {
         val smallImagePath =
-            fileHashNamePath.resolveSibling(
-                "${fileHashNamePath.nameWithoutExtension}$SMALL_IMAGE_SUFFIX.${fileHashNamePath.extension}",
+            filePath.resolveSibling(
+                "${filePath.nameWithoutExtension}$SMALL_IMAGE_SUFFIX.${filePath.extension}",
             )
+        if (smallImagePath.exists()) {
+            return smallImagePath
+        }
         val resizedImage = imageXObject.image.resizeToFitSquare(IMAGE_DIMENSIONS_THRESHOLD)
-        ImageIO.write(resizedImage, fileHashNamePath.extension, smallImagePath.toFile())
+        withContext(Dispatchers.IO) {
+            ImageIO.write(resizedImage, filePath.extension, smallImagePath.toFile())
+        }
         return smallImagePath
     }
 

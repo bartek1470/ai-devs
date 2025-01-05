@@ -10,6 +10,5 @@ abstract class BasePdfResource(
 ) : UUIDEntity(id) {
     var name by table.name
     var pages by table.pages
-    var index by table.indexes
     var pdfFile by PdfFile referencedOn table.pdfFile
 }
