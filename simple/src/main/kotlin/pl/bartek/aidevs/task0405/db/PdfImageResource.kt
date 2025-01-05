@@ -14,5 +14,4 @@ class PdfImageResource(
     var filePath by PdfImageResourceTable.filePath
     var filePathSmall by PdfImageResourceTable.filePathSmall
     var description by PdfImageResourceTable.description
-    var imageText by PdfImageResourceTable.imageText
 }

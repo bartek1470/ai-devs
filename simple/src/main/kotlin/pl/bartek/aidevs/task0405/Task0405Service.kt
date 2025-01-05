@@ -1,11 +1,5 @@
 package pl.bartek.aidevs.task0405
 
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.MapperFeature
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.qdrant.client.QdrantClient
 import kotlinx.coroutines.Deferred
@@ -22,6 +16,7 @@ import org.apache.pdfbox.cos.COSName
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
@@ -44,19 +39,23 @@ import org.springframework.http.MediaTypeFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
-import pl.bartek.aidevs.config.Profile.OPENAI
-import pl.bartek.aidevs.config.Profile.QDRANT
+import pl.bartek.aidevs.ai.DetailedPolishKeywordMetadataEnricher
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsApiClient
+import pl.bartek.aidevs.task0405.db.BasePdfResource
 import pl.bartek.aidevs.task0405.db.PdfFile
 import pl.bartek.aidevs.task0405.db.PdfFileTable
 import pl.bartek.aidevs.task0405.db.PdfImageResource
+import pl.bartek.aidevs.task0405.db.PdfImageResourceTable
+import pl.bartek.aidevs.task0405.db.PdfTextResource
+import pl.bartek.aidevs.task0405.db.PdfTextResourceTable
 import pl.bartek.aidevs.util.downloadFile
 import pl.bartek.aidevs.util.println
 import pl.bartek.aidevs.util.resizeToFitSquare
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.UUID
 import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 import kotlin.io.path.Path
@@ -78,25 +77,15 @@ class Task0405Service(
     @Value("\${aidevs.task.0405.answer-url}") private val answerUrl: String,
     @Value("\${aidevs.task.0405.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.0405.questions-url}") private val questionsUrl: String,
-    @Value("\${python.packages.path}") pythonPackagesPath: Path,
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
-    objectMapper: ObjectMapper,
     private val restClient: RestClient,
     private val chatService: ChatService,
     private val aiDevsApiClient: AiDevsApiClient,
     private val vectorStore: VectorStore,
     private val qdrantClient: QdrantClient,
+    private val detailedPolishKeywordMetadataEnricher: DetailedPolishKeywordMetadataEnricher,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
-    private val xmlMapper: ObjectMapper =
-        XmlMapper
-            .builder()
-            .defaultUseWrapper(false)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
-            .configure(SerializationFeature.INDENT_OUTPUT, true)
-            .build()
-            .registerKotlinModule()
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -120,7 +109,26 @@ class Task0405Service(
         terminal.println("Processing image resources from PDF")
         appendMissingImages(pdf)
         terminal.println("Creating documents")
-        fetchDocuments(pdf)
+        val documents: List<Document> = detailedPolishKeywordMetadataEnricher.transform(fetchDocuments(pdf))
+        transaction {
+            val ids =
+                documents
+                    .filter { it.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS] != null }
+                    .map { it.id }
+                    .map { UUID.fromString(it) }
+
+            val imageResources =
+                PdfImageResource.find { (PdfImageResourceTable.id inList ids) and (PdfImageResourceTable.keywords eq setOf()) }
+            imageResources.forEach { resource ->
+                updateKeywords(resource, documents)
+            }
+
+            val textResources =
+                PdfTextResource.find { (PdfTextResourceTable.id inList ids) and (PdfTextResourceTable.keywords eq setOf()) }
+            textResources.forEach { resource ->
+                updateKeywords(resource, documents)
+            }
+        }
 
 //        prepareDocumentsInVectorStore(pdf)
 //        val questions = fetchQuestions()
@@ -242,6 +250,19 @@ class Task0405Service(
 //
 //        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers))
 //        terminal.println(aiDevsAnswerResponse)
+    }
+
+    private fun updateKeywords(
+        resource: BasePdfResource,
+        documents: List<Document>,
+    ) {
+        documents
+            .single {
+                it.id == resource.id.value.toString()
+            }.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]!!
+            .takeIf { it is Set<*> }
+            .let { it as Set<String> }
+            .also { resource.keywords = it }
     }
 
 //    private fun prepareDocumentsInVectorStore(pdf: Path) {
@@ -384,52 +405,39 @@ class Task0405Service(
             }
         }
 
-    private fun fetchDocuments(pdf: PdfFile): List<Document> {
-        val imageResources =
-            transaction {
-                pdf.refresh()
-                pdf.images
-            }
-        return emptyList()
-//        imageResources.map {
-//            Document()
-//        }
-//
-//        resources.flatMap { imageResource ->
-//            imageDescription
-//                .let {
-//                    val metadata =
-//                        mutableMapOf<String, Any>()
-//                            .apply {
-//                                put("type", "image_description")
-//                                put(
-//                                    PagePdfDocumentReader.METADATA_START_PAGE_NUMBER,
-//                                    imageResource.pageNumbers.joinToString(","),
-//                                )
-//                                put(PagePdfDocumentReader.METADATA_FILE_NAME, imageResource.image.fileName.toString())
-//                            }.toMap()
-//                    Document(it, metadata)
-//                }.also { documents.add(it) }
-//
-//            imageText
-//                ?.takeIf { it.isNotBlank() }
-//                ?.let {
-//                    val metadata =
-//                        mutableMapOf<String, Any>()
-//                            .apply {
-//                                put("type", "image_text")
-//                                put(
-//                                    PagePdfDocumentReader.METADATA_START_PAGE_NUMBER,
-//                                    imageResource.pageNumbers.joinToString(","),
-//                                )
-//                                put(PagePdfDocumentReader.METADATA_FILE_NAME, imageResource.image.fileName.toString())
-//                            }.toMap()
-//                    Document(it, metadata)
-//                }?.also { documents.add(it) }
-//
-//            documents
-//        }
-    }
+    private fun fetchDocuments(pdf: PdfFile): List<Document> =
+        transaction {
+            pdf.refresh()
+            val imageDocuments =
+                pdf.images.map {
+                    Document(
+                        it.id.value.toString(),
+                        it.description,
+                        buildMap {
+                            put(PagePdfDocumentReader.METADATA_FILE_NAME, it.filePath)
+                            put(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER, it.pages)
+                            if (it.keywords.isNotEmpty()) {
+                                put(DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS, it.keywords)
+                            }
+                        },
+                    )
+                }
+            val textDocuments =
+                pdf.text.map {
+                    Document(
+                        it.id.value.toString(),
+                        it.content,
+                        buildMap {
+                            put(PagePdfDocumentReader.METADATA_FILE_NAME, pdf.filePath)
+                            put(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER, it.pages)
+                            if (it.keywords.isNotEmpty()) {
+                                put(DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS, it.keywords)
+                            }
+                        },
+                    )
+                }
+            textDocuments + imageDocuments
+        }
 
     private suspend fun generateImageDescription(image: Resource): Deferred<String> =
         coroutineScope {
@@ -453,6 +461,7 @@ class Task0405Service(
                             media,
                         ),
                     ),
+                    streaming = false,
                     chatOptions =
                         FunctionCallingOptions
                             .builder()

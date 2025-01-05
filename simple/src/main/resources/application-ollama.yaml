@@ -23,6 +23,9 @@ spring:
       embedding:
         enabled: true
 
-local:
+
+aidevs:
+  keywords:
+    model: ${spring.ai.ollama.chat.options.model}
   ollama:
     unload-before-whisper: true

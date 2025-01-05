@@ -17,3 +17,7 @@ spring:
             model: ${OPENAI_DEFAULT_AUDIO_TRANSCRIPTION_MODEL:whisper-1}
       embedding:
         enabled: true
+
+aidevs:
+  keywords:
+    model: gpt-4o

@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task0405.db
+package pl.bartek.aidevs.db
 
 import org.jetbrains.exposed.sql.ColumnTransformer
 

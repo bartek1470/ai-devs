@@ -6,5 +6,4 @@ object PdfImageResourceTable : BasePdfResourceTable("pdf_image_resource") {
     val filePath = text("filepath")
     val filePathSmall = text("filepath_small").nullable()
     val description = text("description")
-    val imageText = text("image_text").nullable()
 }
