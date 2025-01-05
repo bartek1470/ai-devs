@@ -1,11 +1,10 @@
 package pl.bartek.aidevs.ai.transcript
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.ai.chat.client.ChatClient
-import org.springframework.ai.ollama.api.OllamaOptions
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.FileSystemResource
 import org.springframework.stereotype.Service
+import pl.bartek.aidevs.ai.OllamaManager
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.task0201.Recording
 import java.nio.file.Files
@@ -18,10 +17,9 @@ private const val AUDIO_TRANSCRIPTION_SUB_DIRECTORY = "audio-transcript"
 @Service
 class TranscriptService(
     @Value("\${aidevs.cache-dir}") private val cacheDir: Path,
-    @Value("\${aidevs.local.ollama.unload-before-whisper:false}") private val unloadOllamaBeforeWhisper: Boolean,
-    @Value("\${aidevs.local.ollama.possible-models:[]}") private val possibleOllamaModels: List<String>,
+    @Value("\${aidevs.ollama.unload-before-whisper:false}") private val unloadOllamaBeforeWhisper: Boolean,
     @Value("\${python.packages.path}") private val pythonPackagesPath: Path,
-    private val chatClient: ChatClient,
+    private val ollamaManager: OllamaManager,
 ) {
     // TODO [bartek1470] second option -> OpenAiAudioTranscriptionModel - via OpenAI API
     // TODO [bartek1470] third option -> https://github.com/ggerganov/whisper.cpp
@@ -55,7 +53,7 @@ class TranscriptService(
         outputDirectory: Path,
     ) {
         if (unloadOllamaBeforeWhisper) {
-            unloadOllamaModels()
+            ollamaManager.unloadModels()
         }
 
         try {
@@ -95,21 +93,6 @@ class TranscriptService(
         } catch (e: Exception) {
             log.error(e) { "Failed to execute whisper command for $file" }
             throw IllegalStateException("Failed to transcribe: $file", e)
-        }
-    }
-
-    fun unloadOllamaModels() {
-        for (model in possibleOllamaModels) {
-            chatClient
-                .prompt()
-                .options(
-                    OllamaOptions
-                        .builder()
-                        .withModel(model)
-                        .withKeepAlive("0")
-                        .build(),
-                ).call()
-                .content()
         }
     }
 

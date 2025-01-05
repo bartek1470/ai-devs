@@ -25,5 +25,4 @@ spring:
 
 local:
   ollama:
-    possible-models: llama3.2:1b,llama3.2:3b,gemma2:2b,llava:7b,phi3:3.8b # a list from docker/docker-compose.yaml
     unload-before-whisper: true
