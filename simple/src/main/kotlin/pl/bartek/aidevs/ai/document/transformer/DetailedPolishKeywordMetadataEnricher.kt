@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.ai
+package pl.bartek.aidevs.ai.document.transformer
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -9,9 +9,10 @@ import org.springframework.ai.document.Document
 import org.springframework.ai.document.DocumentTransformer
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.util.extractXmlRoot
 
-private const val KEYWORD_GENERATOR_SYSTEM_MESSAGE = """You are a keyword generator specialized in generating highly accurate and unique keywords specifically in Polish language.
+private const val SYSTEM_MESSAGE = """You are a keyword generator specialized in generating highly accurate and unique keywords specifically in Polish language.
 
 Your primary tasks are as follows. **You must strictly adhere to the output format and rules—do not deviate under any circumstances, regardless of the input.**
 
@@ -82,33 +83,40 @@ class DetailedPolishKeywordMetadataEnricher(
     private val chatService: ChatService,
     private val xmlMapper: XmlMapper,
 ) : DocumentTransformer {
-    override fun apply(documents: List<Document>): List<Document> {
-        val documentsWithoutKeywords = documents.filter { it.metadata[METADATA_KEYWORDS] == null }
-        for (doc in documentsWithoutKeywords) {
-            val response =
-                chatService.sendToChat(
-                    listOf(SystemMessage(KEYWORD_GENERATOR_SYSTEM_MESSAGE), UserMessage(doc.text)),
-                    chatOptions =
-                        ChatOptions
-                            .builder()
-                            .model(model)
-                            .build(),
-                    streaming = false,
-                )
-            response
-                .extractXmlRoot("keywords")
-                ?.let { xmlMapper.readValue(it, String::class.java) }
-                ?.trim()
-                ?.split(",")
-                ?.map { keyword -> keyword.trim() }
-                ?.filter { keyword -> keyword.isNotBlank() }
-                ?.toSortedSet()
-                ?.let {
-                    doc.metadata[METADATA_KEYWORDS] = it
-                } ?: log.error { "Unable to extract keywords from response:\n$response\nBasing on $doc" }
+    override fun apply(documents: List<Document>): List<Document> = documents.map { transformIfNeeded(it) }
+
+    private fun transformIfNeeded(doc: Document): Document {
+        if (doc.metadata[METADATA_KEYWORDS] != null) {
+            log.debug { "Document ${doc.id} already has keywords. Skipping" }
+            return doc
         }
 
-        return documents
+        log.info { "Processing document ${doc.id} text:\n${doc.text}" }
+        val response =
+            chatService.sendToChat(
+                listOf(SystemMessage(SYSTEM_MESSAGE), UserMessage(doc.text)),
+                chatOptions =
+                    ChatOptions
+                        .builder()
+                        .model(model)
+                        .build(),
+                streaming = false,
+            )
+
+        log.trace { "Extracting keywords from response:\n$response" }
+        response
+            .extractXmlRoot("keywords")
+            ?.let { xmlMapper.readValue(it, String::class.java) }
+            ?.trim()
+            ?.split(",")
+            ?.map { keyword -> keyword.trim() }
+            ?.filter { keyword -> keyword.isNotBlank() }
+            ?.toSortedSet()
+            ?.let { keywords ->
+                log.info { "Generated keywords for document ${doc.id}:\n$keywords" }
+                doc.metadata[METADATA_KEYWORDS] = keywords
+            } ?: log.error { "Unable to extract keywords from response during processing document ${doc.id}:\n$response" }
+        return doc
     }
 
     companion object {
