@@ -110,25 +110,7 @@ class Task0405Service(
         appendMissingImages(pdf)
         terminal.println("Creating documents")
         val documents: List<Document> = detailedPolishKeywordMetadataEnricher.transform(fetchDocuments(pdf))
-        transaction {
-            val ids =
-                documents
-                    .filter { it.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS] != null }
-                    .map { it.id }
-                    .map { UUID.fromString(it) }
-
-            val imageResources =
-                PdfImageResource.find { (PdfImageResourceTable.id inList ids) and (PdfImageResourceTable.keywords eq setOf()) }
-            imageResources.forEach { resource ->
-                updateKeywords(resource, documents)
-            }
-
-            val textResources =
-                PdfTextResource.find { (PdfTextResourceTable.id inList ids) and (PdfTextResourceTable.keywords eq setOf()) }
-            textResources.forEach { resource ->
-                updateKeywords(resource, documents)
-            }
-        }
+        syncKeywords(documents)
 
 //        prepareDocumentsInVectorStore(pdf)
 //        val questions = fetchQuestions()
@@ -250,6 +232,28 @@ class Task0405Service(
 //
 //        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers))
 //        terminal.println(aiDevsAnswerResponse)
+    }
+
+    private fun syncKeywords(documents: List<Document>) {
+        transaction {
+            val ids =
+                documents
+                    .filter { it.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS] != null }
+                    .map { it.id }
+                    .map { UUID.fromString(it) }
+
+            val imageResources =
+                PdfImageResource.find { (PdfImageResourceTable.id inList ids) and (PdfImageResourceTable.keywords eq setOf()) }
+            imageResources.forEach { resource ->
+                updateKeywords(resource, documents)
+            }
+
+            val textResources =
+                PdfTextResource.find { (PdfTextResourceTable.id inList ids) and (PdfTextResourceTable.keywords eq setOf()) }
+            textResources.forEach { resource ->
+                updateKeywords(resource, documents)
+            }
+        }
     }
 
     private fun updateKeywords(
