@@ -16,6 +16,7 @@ private const val SYSTEM_MESSAGE = """Clean the provided user's text in Polish. 
 3. REPLACE words with the correct Polish spellings, using proper Polish diacritics (e.g., ą, ć, ę, etc.).
 4. HANDLE mixed or nonstandard whitespaces such as non-breaking spaces, ensuring they are removed or normalized to a single space.
 5. DO NOT add any commentary, explanations, or information outside the cleaned text.
+6. DO NOT include any text about being not able to achieve your task.
 
 The output must be a single corrected Polish sentence or text block, properly spaced and grammatically valid. Retain the context and meaning of the original text but ensure all corrections strictly conform to Polish language spelling and grammar.
 
