@@ -21,3 +21,7 @@ spring:
 aidevs:
   keywords:
     model: gpt-4o
+  text-cleanup:
+    model: gpt-4o
+  title:
+    model: gpt-4o-mini

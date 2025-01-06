@@ -19,27 +19,25 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
-import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.document.Document
 import org.springframework.ai.model.Media
 import org.springframework.ai.model.function.FunctionCallingOptions
-import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.ai.reader.ExtractedTextFormatter
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Profile
 import org.springframework.core.ParameterizedTypeReference
-import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.PathResource
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaTypeFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
-import pl.bartek.aidevs.ai.DetailedPolishKeywordMetadataEnricher
+import pl.bartek.aidevs.ai.document.transformer.DetailedPolishKeywordMetadataEnricher
+import pl.bartek.aidevs.ai.document.transformer.TextCleanupTransformer
+import pl.bartek.aidevs.ai.document.transformer.TitleEnricher
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.task0405.db.BasePdfResource
@@ -69,7 +67,7 @@ import kotlin.io.path.relativeToOrSelf
 private const val IMAGE_DIMENSIONS_THRESHOLD = 1024
 private const val SMALL_IMAGE_SUFFIX = "_small"
 
-@Profile(QDRANT, OPENAI)
+// @Profile(QDRANT, OPENAI)
 @Service
 class Task0405Service(
     @Value("\${aidevs.cache-dir}") cacheDir: String,
@@ -84,6 +82,8 @@ class Task0405Service(
     private val vectorStore: VectorStore,
     private val qdrantClient: QdrantClient,
     private val detailedPolishKeywordMetadataEnricher: DetailedPolishKeywordMetadataEnricher,
+    private val textCleanupTransformer: TextCleanupTransformer,
+    private val titleEnricher: TitleEnricher,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
 
@@ -108,8 +108,12 @@ class Task0405Service(
             }
         terminal.println("Processing image resources from PDF")
         appendMissingImages(pdf)
-        terminal.println("Creating documents")
-        val documents: List<Document> = detailedPolishKeywordMetadataEnricher.transform(fetchDocuments(pdf))
+        terminal.println("Processing text resources from PDF")
+        appendMissingText(pdf)
+        terminal.println("Getting documents from DB")
+        val documentsFromDb = fetchDocuments(pdf)
+        terminal.println("Syncing keywords")
+        val documents: List<Document> = detailedPolishKeywordMetadataEnricher.transform(documentsFromDb)
         syncKeywords(documents)
 
 //        prepareDocumentsInVectorStore(pdf)
@@ -243,27 +247,36 @@ class Task0405Service(
                     .map { UUID.fromString(it) }
 
             val imageResources =
-                PdfImageResource.find { (PdfImageResourceTable.id inList ids) and (PdfImageResourceTable.keywords eq setOf()) }
+                PdfImageResource.find { (PdfImageResourceTable.id inList ids) and (PdfImageResourceTable.keywords eq null) }
             imageResources.forEach { resource ->
-                updateKeywords(resource, documents)
+                val doc = findDocument(resource, documents)
+                updateKeywordsInResource(resource, doc)
             }
 
             val textResources =
-                PdfTextResource.find { (PdfTextResourceTable.id inList ids) and (PdfTextResourceTable.keywords eq setOf()) }
+                PdfTextResource.find { (PdfTextResourceTable.id inList ids) and (PdfTextResourceTable.keywords eq null) }
             textResources.forEach { resource ->
-                updateKeywords(resource, documents)
+                val doc = findDocument(resource, documents)
+                updateKeywordsInResource(resource, doc)
             }
         }
     }
 
-    private fun updateKeywords(
+    private fun findDocument(
         resource: BasePdfResource,
         documents: List<Document>,
-    ) {
+    ): Document =
         documents
             .single {
                 it.id == resource.id.value.toString()
-            }.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]!!
+            }
+
+    private fun updateKeywordsInResource(
+        resource: BasePdfResource,
+        document: Document,
+    ) {
+        document
+            .metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]!!
             .takeIf { it is Set<*> }
             .let { it as Set<String> }
             .also { resource.keywords = it }
@@ -295,11 +308,11 @@ class Task0405Service(
 //        }
 //    }
 
-    fun createDocumentsFromText(pdf: Path): List<Document> {
+    fun appendMissingText(pdf: PdfFile) {
         log.debug { "Reading text from $pdf" }
         val pdfReader =
             PagePdfDocumentReader(
-                FileSystemResource(pdf),
+                PathResource(pdf.filePath),
                 PdfDocumentReaderConfig
                     .builder()
                     .withPageTopMargin(0)
@@ -313,41 +326,83 @@ class Task0405Service(
             )
 
         val documents: List<Document> = pdfReader.read()
-        val pdfResourcesDir: Path = cacheDir.resolve(pdf.nameWithoutExtension).resolve("text")
-        Files.createDirectories(pdfResourcesDir)
-        val documentsWithCachePath = documents.map { pdfResourcesDir.resolve("${DigestUtils.md5Hex(it.text)}.txt") to it }
-        documentsWithCachePath
-            .filter { (cachePath, _) -> cachePath.notExists() }
-            .forEach { (cachePath, doc) ->
-                chatService.sendToChat(
-                    listOf(
-                        SystemMessage(
-                            """
-                            Clean provided user's text. Remove any extra spaces, new lines, etc.
-                            Keep in mind that some of the words might have many whitespaces in between characters. You need to remove those to output a real Polish word.
-                            There might be spelling mistakes, please correct them to match the context of the sentence.
-                            Do not include any additional text or commentary.
-                            """.trimIndent(),
-                        ),
-                        UserMessage(doc.text),
-                    ),
-                    chatOptions =
-                        FunctionCallingOptions
-                            .builder()
-                            .temperature(0.0)
-                            .model(OpenAiApi.ChatModel.GPT_4_O.value)
-                            .build(),
-                    cachePath = cachePath,
-                )
+        val textDocumentsFromPdf =
+            documents
+                .filter { it.text?.isNotBlank() ?: false }
+                .also { documentsWithText -> warnIfSizeDiffers(documents, documentsWithText) }
+        val missingDocuments =
+            transaction {
+                textDocumentsFromPdf.filter {
+                    val hash: String = DigestUtils.md5Hex(it.text)
+                    PdfTextResourceTable
+                        .select(PdfTextResourceTable.id)
+                        .where { PdfTextResourceTable.hash eq hash }
+                        .count() == 0L
+                }
             }
+        val cleanDocuments: List<Pair<Document, String>> =
+            textCleanupTransformer
+                .transform(missingDocuments)
+                .also { titleEnricher.transform(it) }
+                .map {
+                    val hash = DigestUtils.md5Hex(it.metadata[TextCleanupTransformer.METADATA_ORIGINAL_TEXT] as String? ?: it.text!!)
+                    it to hash
+                }
+        transaction {
+            pdf.refresh()
+            cleanDocuments.forEach { (doc, hash) ->
+                val name = doc.metadata[TitleEnricher.METADATA_TITLE] as String? ?: hash
+                val pages = extractPages(doc)
+                val (originalContent, content) =
+                    doc.metadata[TextCleanupTransformer.METADATA_ORIGINAL_TEXT]
+                        ?.let { it as String }
+                        ?.let {
+                            it to doc.text
+                        } ?: (doc.text!! to null)
+                PdfTextResource.new {
+                    pdfFile = pdf
+                    this.hash = hash
+                    this.name = name
+                    this.pages = pages
+                    this.originalContent = originalContent
+                    this.content = content
+                }
+            }
+        }
+    }
 
-        return documentsWithCachePath.map { (cachePath, doc) ->
-            doc
-                .mutate()
-                .metadata(PagePdfDocumentReader.METADATA_FILE_NAME, cachePath.fileName.toString())
-                .metadata("original_text", doc.text!!)
-                .text(Files.readString(cachePath))
-                .build()
+    private fun extractPages(doc: Document) =
+        doc.metadata[PagePdfDocumentReader.METADATA_START_PAGE_NUMBER]
+            ?.toString()
+            ?.toInt()
+            ?.let { startPage ->
+                doc.metadata[PagePdfDocumentReader.METADATA_END_PAGE_NUMBER]
+                    ?.toString()
+                    ?.toInt()
+                    ?.let { endPage -> (startPage..endPage).toSortedSet() }
+                    ?: setOf(startPage.toString().toInt())
+            } ?: setOf()
+
+    private fun warnIfSizeDiffers(
+        allDocuments: List<Document>,
+        documentsWithText: List<Document>,
+    ) {
+        if (allDocuments.size != documentsWithText.size) {
+            val pagesWithEmptyText =
+                allDocuments
+                    .asSequence()
+                    .filter { doc -> doc.text == null }
+                    .map { doc ->
+                        val pages = extractPages(doc)
+                        pages
+                            .lastOrNull { it != pages.first() }
+                            ?.let { "${pages.first()}-$it" } ?: pages.first().toString()
+                    }.distinct()
+                    .sorted()
+                    .joinToString(", ")
+            log.warn {
+                "Some documents have no text. Skipped ${allDocuments.size - documentsWithText.size} documents. Pages with empty text: $pagesWithEmptyText"
+            }
         }
     }
 
@@ -420,7 +475,7 @@ class Task0405Service(
                         buildMap {
                             put(PagePdfDocumentReader.METADATA_FILE_NAME, it.filePath)
                             put(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER, it.pages)
-                            if (it.keywords.isNotEmpty()) {
+                            if (it.keywords?.isNotEmpty() == true) {
                                 put(DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS, it.keywords)
                             }
                         },
@@ -430,11 +485,11 @@ class Task0405Service(
                 pdf.text.map {
                     Document(
                         it.id.value.toString(),
-                        it.content,
+                        it.content ?: it.originalContent,
                         buildMap {
                             put(PagePdfDocumentReader.METADATA_FILE_NAME, pdf.filePath)
                             put(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER, it.pages)
-                            if (it.keywords.isNotEmpty()) {
+                            if (it.keywords?.isNotEmpty() == true) {
                                 put(DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS, it.keywords)
                             }
                         },

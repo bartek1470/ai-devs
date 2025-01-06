@@ -29,5 +29,7 @@ aidevs:
     model: ${spring.ai.ollama.chat.options.model}
   text-cleanup:
     model: ${spring.ai.ollama.chat.options.model}
+  title:
+    model: ${spring.ai.ollama.chat.options.model}
   ollama:
     unload-before-whisper: true

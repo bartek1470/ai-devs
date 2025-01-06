@@ -10,4 +10,5 @@ class PdfTextResource(
     companion object : UUIDEntityClass<PdfTextResource>(PdfTextResourceTable)
 
     var content by PdfTextResourceTable.content
+    var originalContent by PdfTextResourceTable.originalContent
 }

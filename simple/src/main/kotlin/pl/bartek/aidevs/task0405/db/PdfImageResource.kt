@@ -10,7 +10,6 @@ class PdfImageResource(
     companion object : UUIDEntityClass<PdfImageResource>(PdfImageResourceTable)
 
     var extension by PdfImageResourceTable.extension
-    var hash by PdfImageResourceTable.hash
     var filePath by PdfImageResourceTable.filePath
     var filePathSmall by PdfImageResourceTable.filePathSmall
     var description by PdfImageResourceTable.description

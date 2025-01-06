@@ -10,8 +10,9 @@ abstract class BasePdfResource(
 ) : UUIDEntity(id) {
     var name by table.name
     var pages by table.pages
-    var keywords: Set<String> by table.keywords
+    var hash by table.hash
+    var keywords by table.keywords
     var pdfFile by PdfFile referencedOn table.pdfFile
 
-    override fun toString(): String = "BasePdfResource(name='$name', pdfFile=$pdfFile)"
+    override fun toString(): String = "BasePdfResource(name='$name', hash='$hash', pdfFile=$pdfFile)"
 }
