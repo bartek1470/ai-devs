@@ -47,6 +47,8 @@ import pl.bartek.aidevs.task0405.db.PdfImageResource
 import pl.bartek.aidevs.task0405.db.PdfImageResourceTable
 import pl.bartek.aidevs.task0405.db.PdfTextResource
 import pl.bartek.aidevs.task0405.db.PdfTextResourceTable
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
+import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
 import pl.bartek.aidevs.util.downloadFile
 import pl.bartek.aidevs.util.println
 import pl.bartek.aidevs.util.resizeToFitSquare
@@ -63,6 +65,8 @@ import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.notExists
 import kotlin.io.path.relativeToOrSelf
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 private const val IMAGE_DIMENSIONS_THRESHOLD = 1024
 private const val SMALL_IMAGE_SUFFIX = "_small"
@@ -76,6 +80,7 @@ class Task0405Service(
     @Value("\${aidevs.task.0405.data-url}") private val dataUrl: String,
     @Value("\${aidevs.task.0405.questions-url}") private val questionsUrl: String,
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
+    @Value("\${aidevs.image-description.model}") private val imageDescriptionModel: String,
     private val restClient: RestClient,
     private val chatService: ChatService,
     private val aiDevsApiClient: AiDevsApiClient,
@@ -92,9 +97,10 @@ class Task0405Service(
     }
 
     fun run(terminal: Terminal) {
-        terminal.println("Downloading pdf file from $dataUrl")
+        terminal.println("Downloading pdf file from $dataUrl".ansiFormattedSecondaryInfo())
         val pdfPath = restClient.downloadFile(dataUrl, apiKey, cacheDir)
-        terminal.println("Obtaining PDF file from DB")
+
+        terminal.println("Obtaining PDF file from DB".ansiFormattedSecondaryInfo())
         val pdf =
             transaction {
                 PdfFile
@@ -106,18 +112,29 @@ class Task0405Service(
                         .new { filePath = pdfPath }
                         .also { log.info { "Created new pdf file in db: ${it.id}" } }
             }
-        terminal.println("Processing image resources from PDF")
+
+        terminal.println("Processing image resources from PDF".ansiFormattedSecondaryInfo())
         appendMissingImages(pdf)
-        terminal.println("Processing text resources from PDF")
+
+        terminal.println("Processing text resources from PDF".ansiFormattedSecondaryInfo())
         appendMissingText(pdf)
-        terminal.println("Getting documents from DB")
+
+        terminal.println("Getting documents from DB".ansiFormattedSecondaryInfo())
         val documentsFromDb = fetchDocuments(pdf)
-        terminal.println("Syncing keywords")
+
+        terminal.println("Syncing keywords".ansiFormattedSecondaryInfo())
         val documents: List<Document> = detailedPolishKeywordMetadataEnricher.transform(documentsFromDb)
         syncKeywords(documents)
 
-//        prepareDocumentsInVectorStore(pdf)
-//        val questions = fetchQuestions()
+        terminal.println("Adding documents to vector store".ansiFormattedSecondaryInfo())
+        transformMetadataToQdrantSupportedTypes(documents)
+        addDocumentsIfEmptyVectorStoreCollection(documents)
+
+        terminal.println("Fetching questions".ansiFormattedSecondaryInfo())
+        val questions = fetchQuestions()
+        terminal.println("Following questions will be asked".ansiFormattedSecondaryInfoTitle())
+        terminal.println(questions.keys.joinToString("\n\t").ansiFormattedSecondaryInfo())
+
 //        val pdfResourcesPath = pdf.resolveSibling(pdf.nameWithoutExtension)
 //        val answers =
 //            questions.mapValues { (key, question) ->
@@ -238,6 +255,14 @@ class Task0405Service(
 //        terminal.println(aiDevsAnswerResponse)
     }
 
+    /**
+     * Converts metadata values to match types supported by [org.springframework.ai.vectorstore.qdrant.QdrantValueFactory.value]
+     */
+    private fun transformMetadataToQdrantSupportedTypes(documents: List<Document>): List<Document> {
+        return listOf()
+//        documents.forEach {  }
+    }
+
     private fun syncKeywords(documents: List<Document>) {
         transaction {
             val ids =
@@ -282,31 +307,15 @@ class Task0405Service(
             .also { resource.keywords = it }
     }
 
-//    private fun prepareDocumentsInVectorStore(pdf: Path) {
-//        val documentCountInDb = qdrantClient.countAsync(collectionName, Duration.ofSeconds(5)).get()
-//        if (documentCountInDb == 0L) {
-//            val imageDocuments = addImages(pdf)
-//            val textDocuments = createDocumentsFromText(pdf)
-//            val allDocuments = textDocuments + imageDocuments
-//
-//            val pdfStructure =
-//                allDocuments
-//                    .map { doc ->
-//                        val filename = doc.metadata[PagePdfDocumentReader.METADATA_FILE_NAME] as String
-//                        val pages = doc.metadata[PagePdfDocumentReader.METADATA_START_PAGE_NUMBER].toString()
-//                        val type = doc.metadata["type"]?.toString()
-//                        PdfResource(filename, pages.split(",").map { it.toInt() }, type ?: "text")
-//                    }.let {
-//                        PdfStructure(it)
-//                    }
-// //            objectMapper.writeValue(pdf.resolveSibling(pdf.nameWithoutExtension).resolve("structure.json").toFile(), pdfStructure)
-//
-//            log.info { "Adding ${allDocuments.size} documents to vector store" }
-//            vectorStore.add(allDocuments)
-//        } else {
-//            log.info { "Collection exists and is not empty. Skipping adding documents" }
-//        }
-//    }
+    private fun addDocumentsIfEmptyVectorStoreCollection(documents: List<Document>) {
+        val documentCountInDb = qdrantClient.countAsync(collectionName, 5.seconds.toJavaDuration()).get()
+        if (documentCountInDb != 0L) {
+            log.info { "Vector store collection already has documents. There are $documentCountInDb documents. Skipping adding documents." }
+            return
+        }
+
+        vectorStore.add(documents)
+    }
 
     fun appendMissingText(pdf: PdfFile) {
         log.debug { "Reading text from $pdf" }
@@ -525,7 +534,7 @@ class Task0405Service(
                         FunctionCallingOptions
                             .builder()
                             .temperature(0.0)
-                            .model("moondream:1.8b")
+                            .model(imageDescriptionModel)
                             .build(),
                 )
             }

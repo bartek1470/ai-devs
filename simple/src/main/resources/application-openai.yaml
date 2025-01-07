@@ -19,6 +19,8 @@ spring:
         enabled: true
 
 aidevs:
+  image-description:
+    model: gpt-4o
   keywords:
     model: gpt-4o
   text-cleanup:

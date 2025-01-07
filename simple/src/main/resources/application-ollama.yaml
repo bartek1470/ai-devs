@@ -22,9 +22,12 @@ spring:
           model: ${OLLAMA_DEFAULT_CHAT_MODEL:llama3.2:3b}
       embedding:
         enabled: true
+        model: nomic-embed-text
 
 
 aidevs:
+  image-description:
+    model: moondream:1.8b
   keywords:
     model: ${spring.ai.ollama.chat.options.model}
   text-cleanup:
