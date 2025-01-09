@@ -135,8 +135,8 @@ class Task0405Service(
         syncKeywords(documents)
 
         terminal.println("Adding documents to vector store".ansiFormattedSecondaryInfo())
-        transformMetadataToQdrantSupportedTypes(documents)
-        addDocumentsIfEmptyVectorStoreCollection(documents)
+        val vectorStoreDocuments = transformMetadataToQdrantSupportedTypes(documents)
+        addDocumentsIfEmptyVectorStoreCollection(vectorStoreDocuments)
 
         terminal.println("Fetching questions".ansiFormattedSecondaryInfo())
         val questions = fetchQuestions()
@@ -221,10 +221,23 @@ class Task0405Service(
     /**
      * Converts metadata values to match types supported by [org.springframework.ai.vectorstore.qdrant.QdrantValueFactory.value]
      */
-    private fun transformMetadataToQdrantSupportedTypes(documents: List<Document>): List<Document> {
-        return listOf()
-//        documents.forEach {  }
-    }
+    private fun transformMetadataToQdrantSupportedTypes(documents: List<Document>): List<Document> =
+        documents.map { doc ->
+            val convertedMetadata =
+                doc.metadata.mapValues { (_, value) ->
+                    if (value is Set<*>) {
+                        value.joinToString(", ")
+                    } else if (value is Path) {
+                        value.toString()
+                    } else {
+                        value
+                    }
+                }
+            doc
+                .mutate()
+                .metadata(convertedMetadata)
+                .build()
+        }
 
     private fun syncKeywords(documents: List<Document>) {
         transaction {
