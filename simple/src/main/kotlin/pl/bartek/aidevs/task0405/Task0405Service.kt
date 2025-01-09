@@ -30,6 +30,7 @@ import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
 import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.core.io.PathResource
@@ -141,30 +142,47 @@ class Task0405Service(
         terminal.println("Fetching questions".ansiFormattedSecondaryInfo())
         val questions = fetchQuestions()
         terminal.println("Following questions will be asked".ansiFormattedSecondaryInfoTitle())
-        terminal.println(questions.keys.joinToString("\n\t").ansiFormattedSecondaryInfo())
-
-        val similarDocuments =
-            vectorStore.similaritySearch(
-                SearchRequest
-                    .builder()
-                    .similarityThreshold(0.5)
-                    .build(),
-            ) ?: listOf()
-        terminal.println("Found ${similarDocuments.size} documents.")
-
-        val context =
-            documents.joinToString("\n\n") { doc ->
-                """
-                |## Document "${doc.metadata[TitleEnricher.METADATA_TITLE]}"
-                |${doc.text}
-                |
-                |Keywords: ${doc.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]}
-                """.trimMargin()
-            }
+        terminal.println("\t${questions.entries.joinToString("\n\t")}".ansiFormattedSecondaryInfo())
 
         val answers =
             questions.mapValues { (key, question) ->
                 terminal.println("$key: $question".ansiFormattedHuman())
+
+                val cachedQuestionKeywords = cacheDir.resolve(DigestUtils.md5Hex(question))
+                val questionKeywords =
+                    if (cacheDir.exists()) {
+                        Files.readString(cachedQuestionKeywords).split(", ")
+                    } else {
+                        val keywords =
+                            detailedPolishKeywordMetadataEnricher
+                                .transform(listOf(Document(key, question, mapOf())))
+                                .flatMap { it.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS] as Set<String> }
+                                .also { Files.writeString(cachedQuestionKeywords, it.joinToString(", ")) }
+                        keywords
+                    }
+
+                val b = FilterExpressionBuilder()
+                val similarDocuments =
+                    vectorStore.similaritySearch(
+                        SearchRequest
+                            .builder()
+                            .query(question)
+                            .filterExpression(b.`in`("keywords", questionKeywords).build())
+                            .similarityThreshold(0.5)
+                            .build(),
+                    ) ?: listOf()
+                terminal.println("Found ${similarDocuments.size} documents.")
+
+                val context =
+                    documents.joinToString("\n\n") { doc ->
+                        """
+                        |## Document "${doc.metadata[TitleEnricher.METADATA_TITLE]}"
+                        |${doc.text}
+                        |
+                        |Keywords: ${doc.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]}
+                        """.trimMargin()
+                    }
+
                 val aiAnswer =
                     chatService.sendToChat(
                         listOf(
@@ -226,7 +244,7 @@ class Task0405Service(
             val convertedMetadata =
                 doc.metadata.mapValues { (_, value) ->
                     if (value is Set<*>) {
-                        value.joinToString(", ")
+                        value.toTypedArray()
                     } else if (value is Path) {
                         value.toString()
                     } else {
