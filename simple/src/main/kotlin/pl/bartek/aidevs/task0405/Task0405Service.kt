@@ -19,13 +19,16 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
+import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.document.Document
 import org.springframework.ai.model.Media
 import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.reader.ExtractedTextFormatter
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
+import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.ParameterizedTypeReference
@@ -39,7 +42,9 @@ import pl.bartek.aidevs.ai.document.transformer.DetailedPolishKeywordMetadataEnr
 import pl.bartek.aidevs.ai.document.transformer.TextCleanupTransformer
 import pl.bartek.aidevs.ai.document.transformer.TitleEnricher
 import pl.bartek.aidevs.course.TaskId
+import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
+import pl.bartek.aidevs.course.api.Task
 import pl.bartek.aidevs.task0405.db.BasePdfResource
 import pl.bartek.aidevs.task0405.db.PdfFile
 import pl.bartek.aidevs.task0405.db.PdfFileTable
@@ -47,9 +52,12 @@ import pl.bartek.aidevs.task0405.db.PdfImageResource
 import pl.bartek.aidevs.task0405.db.PdfImageResourceTable
 import pl.bartek.aidevs.task0405.db.PdfTextResource
 import pl.bartek.aidevs.task0405.db.PdfTextResourceTable
+import pl.bartek.aidevs.util.ansiFormattedHuman
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
 import pl.bartek.aidevs.util.downloadFile
+import pl.bartek.aidevs.util.extractXmlRoot
+import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
 import pl.bartek.aidevs.util.resizeToFitSquare
 import java.io.ByteArrayOutputStream
@@ -135,124 +143,79 @@ class Task0405Service(
         terminal.println("Following questions will be asked".ansiFormattedSecondaryInfoTitle())
         terminal.println(questions.keys.joinToString("\n\t").ansiFormattedSecondaryInfo())
 
-//        val pdfResourcesPath = pdf.resolveSibling(pdf.nameWithoutExtension)
-//        val answers =
-//            questions.mapValues { (key, question) ->
-//                val results: List<Document> =
-//                    vectorStore
-//                        .similaritySearch(
-//                            SearchRequest
-//                                .builder()
-//                                .query(question)
-//                                .build(),
-//                        )?.toList() ?: emptyList()
-//
-//                val pageNumbers =
-//                    results
-//                        .map { doc -> doc.metadata[PagePdfDocumentReader.METADATA_START_PAGE_NUMBER].toString() }
-//                        .flatMap { it.split(",") }
-//                        .map { it.toInt() }
-//                        .toSortedSet()
-//
-//                val context: List<String> =
-//                    pageNumbers.flatMap { page ->
-//                        pdfStructure.resources
-//                            .filter { it.pageNumbers.contains(page) }
-//                            .map { pdfResource ->
-//                                if (pdfResource.type.startsWith("image")) {
-//                                    val imagePath = pdfResourcesPath.resolve("images").resolve(pdfResource.filename)
-//                                    val imageDescription =
-//                                        xmlMapper.readValue<ImageDescription>(imagePath.resolveSibling("${imagePath.fileName}.xml").toFile())
-//                                    buildString {
-//                                        append("Image description: ")
-//                                        append(imageDescription.description)
-//                                        imageDescription.text?.takeIf { it.isNotBlank() }?.also { append("\nText on the image: $it") }
-//                                    }
-//                                } else {
-//                                    val textPath = pdfResourcesPath.resolve("text").resolve(pdfResource.filename)
-//                                    Files.readString(textPath)
-//                                }
-//                            }
-//                    }.distinct()
-//
-//                val context =
-//                    pdfStructure.resources.mapNotNull { pdfResource ->
-//                        if (pdfResource.type.startsWith("image")) {
-//                            val imagePath = pdfResourcesPath.resolve("images").resolve(pdfResource.filename)
-//                            val imageDescription =
-//                                xmlMapper.readValue<ImageDescription>(
-//                                    imagePath.resolveSibling("${imagePath.fileName}.xml").toFile(),
-//                                )
-//                            val imageText = imageDescription.text?.takeIf { it.isNotBlank() }
-//                            if (imageText == null) {
-//                                null
-//                            } else {
-//                                buildString {
-//                                    append("Image description: ")
-//                                    append(imageDescription.description)
-//                                    append("\nText on the image: $imageText")
-//                                }
-//                            }
-//                        } else {
-//                            val textPath = pdfResourcesPath.resolve("text").resolve(pdfResource.filename)
-//                            Files.readString(textPath)
-//                        }
-//                    }
-//
-//                val contextDocuments =
-//                    context
-//                        .mapIndexed { index, doc ->
-//                            "# Context $index:\n${doc.trim()}"
-//                        }.joinToString("\n\n")
-//
-//                terminal.println("Context:".ansiFormattedSecondaryInfoTitle())
-//                terminal.println("$contextDocuments\n\n".ansiFormattedSecondaryInfo())
-//
-//                terminal.println("$key: $question".ansiFormattedHuman())
-//                val aiAnswer =
-//                    chatService.sendToChat(
-//                        listOf(
-//                            SystemMessage(
-//                                """
-//                                |Answer the user's question. Below you have user's notes providing context for the question.
-//                                |Those notes are from user's notebook that is some kind of diary.
-//                                |Answer shortly with only the data user has requested, e.g. if asking about a year, answer only with a year.
-//                                |Provide an answer for the user's question in `result` XML tag.
-//                                |The answer has to be translated to Polish language.
-//                                |The context might don't have the information but you need to answer with the most possible one.
-//                                |There might me some clues in the context like a number from a book.
-//                                |When you have a date, think about the context you have found and see if it alerts the found date.
-//                                |Also try to think about events mentioned in the text, e.g. when something was invented.
-//                                |
-//                                |Firstly, try to think about the most possible answer. Describe what you know from the context and facts above.
-//                                |After that reason why you think this is most possible answer.
-//                                |Lastly, provide an answer for user's question in a way specified above.
-//                                |
-//                                |# Example
-//                                |Users asks about current year. Although year 2005 was mentioned, it is not clear if it is current year. More possible is year 2001 which is mentioned in the end of the note since it's a diary.
-//                                |<result>
-//                                |2001
-//                                |</result>
-//                                |
-//                                |$contextDocuments
-//                                """.trimMargin(),
-//                            ),
-//                            UserMessage(question),
-//                        ),
-//                        chatOptions =
-//                            FunctionCallingOptions
-//                                .builder()
+        val similarDocuments =
+            vectorStore.similaritySearch(
+                SearchRequest
+                    .builder()
+                    .similarityThreshold(0.5)
+                    .build(),
+            ) ?: listOf()
+        terminal.println("Found ${similarDocuments.size} documents.")
+
+        val context =
+            documents.joinToString("\n\n") { doc ->
+                """
+                |## Document "${doc.metadata[TitleEnricher.METADATA_TITLE]}"
+                |${doc.text}
+                |
+                |Keywords: ${doc.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]}
+                """.trimMargin()
+            }
+
+        val answers =
+            questions.mapValues { (key, question) ->
+                terminal.println("$key: $question".ansiFormattedHuman())
+                val aiAnswer =
+                    chatService.sendToChat(
+                        listOf(
+                            SystemMessage(
+                                """
+                                |Answer the user's question based on the provided context. Utilize the diary notes or other documents given in the context to deduce the most probable and concise answer. The final response should be translated into Polish and output in a specified XML format.
+                                |
+                                |# CONTEXT PROCESSING RULES:
+                                |1. FIRSTLY ANALYZE all context and extract potential clues (including dates, events, hints).
+                                |2. IF THE INFORMATION IS AMBIGUOUS, deduce the most logical answer based on reasoning (e.g., decide between conflicting dates).
+                                |3. IF THE CONTEXT IS MISSING RELEVANT DATA, infer a reasonable answer using general knowledge, provided it stays plausible and matches diary intent.
+                                |
+                                |# OUTPUT RULES:
+                                |1. REASON through the answer explicitly before presenting the final result.
+                                |2. ENCLOSE your final output inside the `<result>` XML tag.
+                                |3. TRANSLATE the final answer into Polish with ACCURATE DIACRITICS and grammar.
+                                |4. KEEP THE RESPONSE CONCISE and only include the requested information.
+                                |5. WHEN NUMBER, DATE, OR AN EVENT is asked for, provide related logical facts from context to support your reasoning.
+                                |
+                                |# OUTPUT FORMAT STRUCTURE:
+                                |- Reasoning explaining deduction.
+                                |- Final response in XML:
+                                |  <result>
+                                |  [translated answer]
+                                |  </result>
+                                |
+                                |# EXAMPLES
+                                |Users asks about current year when diary mentions years 2001 and 2005. Reasoning: 2001 is referenced last and fits diary tone.
+                                |<result>
+                                |2001
+                                |</result>
+                                |
+                                |# CONTEXT
+                                |$context
+                                """.trimMargin(),
+                            ),
+                            UserMessage(question),
+                        ),
+                        chatOptions =
+                            ChatOptions
+                                .builder()
 //                                .temperature(0.3)
-//                                .model(OpenAiApi.ChatModel.GPT_4_O.value)
-//                                .build(),
-//                        responseReceived = { terminal.print(it) },
-//                    )
-//                terminal.println()
-//                aiAnswer.extractXmlRoot()?.trim()
-//            }
-//
-//        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers))
-//        terminal.println(aiDevsAnswerResponse)
+                                .build(),
+                        responseReceived = { terminal.print(it) },
+                    )
+                terminal.println()
+                aiAnswer.extractXmlRoot()?.trim()
+            }
+
+        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers))
+        terminal.println(aiDevsAnswerResponse)
     }
 
     /**
