@@ -181,7 +181,7 @@ class Task0405Service(
     ): String? {
         terminal.println("$key: $question".ansiFormattedHuman())
 
-        val cachedQuestionKeywords = cacheDir.resolve(DigestUtils.md5Hex(question))
+        val cachedQuestionKeywords = cacheDir.resolve("${DigestUtils.md5Hex(question)}.txt")
         val questionKeywords =
             if (cachedQuestionKeywords.exists()) {
                 Files.readString(cachedQuestionKeywords).split(", ")
