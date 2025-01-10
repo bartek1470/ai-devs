@@ -85,6 +85,8 @@ fun Terminal.println(answerResponse: AiDevsAnswerResponse) {
     val messageToPrint = "$code, $message"
     if (answerResponse.isError()) {
         println(messageToPrint.ansiFormattedError())
+        answerResponse.hint?.also { println(it.ansiFormattedError()) }
+        answerResponse.debug?.also { println(it.ansiFormattedError()) }
     } else if (answerResponse.isSuccess()) {
         println(messageToPrint.ansiFormattedSuccess())
     } else {

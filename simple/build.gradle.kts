@@ -73,8 +73,10 @@ tasks.withType<Test> {
 configure<SpotlessExtension> {
     kotlin {
         ktlint()
+        toggleOffOn()
     }
     kotlinGradle {
         ktlint()
+        toggleOffOn()
     }
 }

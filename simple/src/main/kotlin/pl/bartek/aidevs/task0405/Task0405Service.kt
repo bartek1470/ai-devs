@@ -1,5 +1,6 @@
 package pl.bartek.aidevs.task0405
 
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.qdrant.client.QdrantClient
 import kotlinx.coroutines.Deferred
@@ -44,6 +45,7 @@ import pl.bartek.aidevs.ai.document.transformer.TextCleanupTransformer
 import pl.bartek.aidevs.ai.document.transformer.TitleEnricher
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
+import pl.bartek.aidevs.course.api.AiDevsAnswerResponse
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
 import pl.bartek.aidevs.task0405.db.BasePdfResource
@@ -53,6 +55,7 @@ import pl.bartek.aidevs.task0405.db.PdfImageResource
 import pl.bartek.aidevs.task0405.db.PdfImageResourceTable
 import pl.bartek.aidevs.task0405.db.PdfTextResource
 import pl.bartek.aidevs.task0405.db.PdfTextResourceTable
+import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedHuman
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
@@ -98,6 +101,7 @@ class Task0405Service(
     private val detailedPolishKeywordMetadataEnricher: DetailedPolishKeywordMetadataEnricher,
     private val textCleanupTransformer: TextCleanupTransformer,
     private val titleEnricher: TitleEnricher,
+    private val xmlMapper: XmlMapper,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
 
@@ -140,100 +144,141 @@ class Task0405Service(
         addDocumentsIfEmptyVectorStoreCollection(vectorStoreDocuments)
 
         terminal.println("Fetching questions".ansiFormattedSecondaryInfo())
-        val questions = fetchQuestions()
+        val questions = fetchQuestions().toList()
         terminal.println("Following questions will be asked".ansiFormattedSecondaryInfoTitle())
-        terminal.println("\t${questions.entries.joinToString("\n\t")}".ansiFormattedSecondaryInfo())
+        terminal.println("\t${questions.joinToString("\n\t")}".ansiFormattedSecondaryInfo())
 
-        val answers =
-            questions.mapValues { (key, question) ->
-                terminal.println("$key: $question".ansiFormattedHuman())
+        var aiDevsAnswerResponse: AiDevsAnswerResponse
+        val answers = questions.toMutableList()
+        val previousTries = mutableListOf<Pair<String?, String?>>()
+        var currentQuestionIndex = 0
+        val maxTries = 5
+        do {
+            val (key, question) = questions[currentQuestionIndex]
+            val answer = answerQuestion(terminal, key, question, documents, previousTries)
+            answers[currentQuestionIndex] = key to (answer ?: "")
+            aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers.toMap()))
+            terminal.println(aiDevsAnswerResponse)
 
-                val cachedQuestionKeywords = cacheDir.resolve(DigestUtils.md5Hex(question))
-                val questionKeywords =
-                    if (cacheDir.exists()) {
-                        Files.readString(cachedQuestionKeywords).split(", ")
-                    } else {
-                        val keywords =
-                            detailedPolishKeywordMetadataEnricher
-                                .transform(listOf(Document(key, question, mapOf())))
-                                .flatMap { it.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS] as Set<String> }
-                                .also { Files.writeString(cachedQuestionKeywords, it.joinToString(", ")) }
-                        keywords
-                    }
+            if (!aiDevsAnswerResponse.message.contains(key) || aiDevsAnswerResponse.hint == null) {
+                currentQuestionIndex++
+                previousTries.clear()
+            } else if (maxTries == previousTries.size) {
+                terminal.println("Max tries reached. Aborting.".ansiFormattedError())
+                break
+            } else {
+                previousTries.add(aiDevsAnswerResponse.hint to answer)
+            }
+        } while (aiDevsAnswerResponse.isError() || currentQuestionIndex >= answers.size)
+    }
 
-                val b = FilterExpressionBuilder()
-                val similarDocuments =
-                    vectorStore.similaritySearch(
-                        SearchRequest
-                            .builder()
-                            .query(question)
-                            .filterExpression(b.`in`("keywords", questionKeywords).build())
-                            .similarityThreshold(0.5)
-                            .build(),
-                    ) ?: listOf()
-                terminal.println("Found ${similarDocuments.size} documents.")
+    private fun answerQuestion(
+        terminal: Terminal,
+        key: String,
+        question: String,
+        documents: List<Document>,
+        previousTries: MutableList<Pair<String?, String?>>,
+    ): String? {
+        terminal.println("$key: $question".ansiFormattedHuman())
 
-                val context =
-                    documents.joinToString("\n\n") { doc ->
-                        """
-                        |## Document "${doc.metadata[TitleEnricher.METADATA_TITLE]}"
-                        |${doc.text}
-                        |
-                        |Keywords: ${doc.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]}
-                        """.trimMargin()
-                    }
-
-                val aiAnswer =
-                    chatService.sendToChat(
-                        listOf(
-                            SystemMessage(
-                                """
-                                |Answer the user's question based on the provided context. Utilize the diary notes or other documents given in the context to deduce the most probable and concise answer. The final response should be translated into Polish and output in a specified XML format.
-                                |
-                                |# CONTEXT PROCESSING RULES:
-                                |1. FIRSTLY ANALYZE all context and extract potential clues (including dates, events, hints).
-                                |2. IF THE INFORMATION IS AMBIGUOUS, deduce the most logical answer based on reasoning (e.g., decide between conflicting dates).
-                                |3. IF THE CONTEXT IS MISSING RELEVANT DATA, infer a reasonable answer using general knowledge, provided it stays plausible and matches diary intent.
-                                |
-                                |# OUTPUT RULES:
-                                |1. REASON through the answer explicitly before presenting the final result.
-                                |2. ENCLOSE your final output inside the `<result>` XML tag.
-                                |3. TRANSLATE the final answer into Polish with ACCURATE DIACRITICS and grammar.
-                                |4. KEEP THE RESPONSE CONCISE and only include the requested information.
-                                |5. WHEN NUMBER, DATE, OR AN EVENT is asked for, provide related logical facts from context to support your reasoning.
-                                |
-                                |# OUTPUT FORMAT STRUCTURE:
-                                |- Reasoning explaining deduction.
-                                |- Final response in XML:
-                                |  <result>
-                                |  [translated answer]
-                                |  </result>
-                                |
-                                |# EXAMPLES
-                                |Users asks about current year when diary mentions years 2001 and 2005. Reasoning: 2001 is referenced last and fits diary tone.
-                                |<result>
-                                |2001
-                                |</result>
-                                |
-                                |# CONTEXT
-                                |$context
-                                """.trimMargin(),
-                            ),
-                            UserMessage(question),
-                        ),
-                        chatOptions =
-                            ChatOptions
-                                .builder()
-//                                .temperature(0.3)
-                                .build(),
-                        responseReceived = { terminal.print(it) },
-                    )
-                terminal.println()
-                aiAnswer.extractXmlRoot()?.trim()
+        val cachedQuestionKeywords = cacheDir.resolve(DigestUtils.md5Hex(question))
+        val questionKeywords =
+            if (cachedQuestionKeywords.exists()) {
+                Files.readString(cachedQuestionKeywords).split(", ")
+            } else {
+                val keywords =
+                    detailedPolishKeywordMetadataEnricher
+                        .transform(listOf(Document(key, question, mapOf())))
+                        .flatMap { it.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS] as Set<String> }
+                        .also { Files.writeString(cachedQuestionKeywords, it.joinToString(", ")) }
+                keywords
             }
 
-        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers))
-        terminal.println(aiDevsAnswerResponse)
+        val b = FilterExpressionBuilder()
+        val similarDocuments =
+            vectorStore.similaritySearch(
+                SearchRequest
+                    .builder()
+                    .query(question)
+                    .filterExpression(b.`in`("keywords", questionKeywords).build())
+                    .similarityThreshold(0.8)
+                    .build(),
+            ) ?: listOf()
+        terminal.println("Found ${similarDocuments.size} documents.")
+
+        val context =
+            documents.joinToString("\n\n") { doc ->
+                """
+                |## Document "${doc.metadata[TitleEnricher.METADATA_TITLE]}"
+                |${doc.text}
+                |
+                |Keywords: ${doc.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]}
+                """.trimMargin()
+            }
+
+        val aiAnswer =
+            chatService.sendToChat(
+                listOf(
+                    SystemMessage(
+                        """
+                        |Answer the user's question based on the provided context. Utilize the diary notes or other documents given in the context to deduce the most probable and concise answer. The final response should be translated into Polish and output in a specified XML format.
+                        |You have few attempts to provide a correct answer. If you failed previously to answer the question, it will appear in PREVIOUS TRIES section, along with hint to help you answer the question.
+                        |NEVER use the same answer from PREVIOUS TRIES. It was incorrect and using it again is nonsense.
+                        |
+                        |# CONTEXT PROCESSING RULES:
+                        |1. FIRSTLY ANALYZE all context and extract potential clues (including dates, events, hints).
+                        |2. FIND OUT all possible dates for keywords or specific events found in text.
+                        |3. IF THE INFORMATION IS AMBIGUOUS, deduce the most logical answer based on reasoning (e.g., decide between conflicting dates).
+                        |4. IF THE CONTEXT IS MISSING RELEVANT DATA, infer a reasonable answer using general knowledge, provided it stays plausible and matches diary intent.
+                        |5. ANALYZE what has just happened in context and OUTPUT the year of the event.
+                        |
+                        |# OUTPUT RULES:
+                        |1. REASON through the answer explicitly before presenting the final result.
+                        |2. ENCLOSE your final output inside the `<result>` XML tag.
+                        |3. TRANSLATE the final answer into Polish with ACCURATE DIACRITICS and grammar.
+                        |4. KEEP THE RESPONSE CONCISE and only include the requested information.
+                        |5. WHEN NUMBER, DATE, OR AN EVENT is asked for, provide related logical facts from context to support your reasoning.
+                        |
+                        |# OUTPUT FORMAT STRUCTURE:
+                        |- Reasoning explaining deduction.
+                        |- Final response in XML:
+                        |  <result>
+                        |  [translated answer]
+                        |  </result>
+                        |
+                        |# EXAMPLES
+                        |Users asks about current year when diary mentions years 2001 and 2005. Reasoning: 2001 is referenced last and fits diary tone.
+                        |<result>
+                        |2001
+                        |</result>
+                        |
+                        |# CONTEXT
+                        |$context
+                        |
+                        |# PREVIOUS TRIES
+                        |${previousTries.joinToString("\n") { "Your previous answer: ${it.second}\nHint: ${it.first}" }}
+                        """.trimMargin(),
+                    ),
+                    UserMessage(question),
+                ),
+                chatOptions =
+                    ChatOptions
+                        .builder()
+//                                .temperature(0.3)
+                        .build(),
+                responseReceived = { terminal.print(it) },
+            )
+        terminal.println()
+        return aiAnswer.extractXmlRoot()?.let {
+            try {
+                xmlMapper.readValue(it, String::class.java)
+            } catch (e: Exception) {
+                val message = "Failed to parse response XML"
+                log.error(e) { message }
+                terminal.println("$message. ${e.message}".ansiFormattedError())
+                null
+            }
+        }?.trim()
     }
 
     /**
@@ -348,7 +393,10 @@ class Task0405Service(
                 .transform(missingDocuments)
                 .also { titleEnricher.transform(it) }
                 .map {
-                    val hash = DigestUtils.md5Hex(it.metadata[TextCleanupTransformer.METADATA_ORIGINAL_TEXT] as String? ?: it.text!!)
+                    val hash =
+                        DigestUtils.md5Hex(
+                            it.metadata[TextCleanupTransformer.METADATA_ORIGINAL_TEXT] as String? ?: it.text!!,
+                        )
                     it to hash
                 }
         transaction {
@@ -643,7 +691,8 @@ class Task0405Service(
             .get()
             .uri(questionsUrl, apiKey)
             .retrieve()
-            .body(object : ParameterizedTypeReference<Map<String, String>>() {}) ?: throw IllegalStateException("Missing body")
+            .body(object : ParameterizedTypeReference<Map<String, String>>() {})
+            ?: throw IllegalStateException("Missing body")
 
     companion object {
         private val log = KotlinLogging.logger { }

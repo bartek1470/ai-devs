@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import pl.bartek.aidevs.ai.ChatService
 
+@Suppress("ktlint:standard:max-line-length")
 private const val SYSTEM_MESSAGE = "Suggest a MOST SPECIFIC title for this text. You MUST answer only with the title text. You MUST NOT wrap text with quotation marks. The title MUST BE no longer than 7 words. You MUST NOT consider this message during title generation."
 
 @Component
@@ -30,7 +31,8 @@ class TitleEnricher(
             chatService.sendToChat(
                 listOf(SystemMessage(SYSTEM_MESSAGE), UserMessage(doc.text)),
                 chatOptions =
-                    ChatOptions.builder()
+                    ChatOptions
+                        .builder()
                         .model(model)
                         .build(),
                 streaming = false,

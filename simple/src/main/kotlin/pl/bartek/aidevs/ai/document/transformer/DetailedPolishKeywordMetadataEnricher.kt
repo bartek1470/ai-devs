@@ -21,9 +21,13 @@ Your primary tasks are as follows. **You must strictly adhere to the output form
 2. Gather information presented in the user's input:
    - If the input references commonly known events, concepts, or objects, create a detailed **description of these topics in English**. Include any relevant general knowledge related to the mentioned topics in the user's input. Provide an enriched explanation to enhance understanding when applicable.
    - If the input does not reference commonly known topics, **still provide a concise description in English**. Acknowledge that specific details are missing or that no general topics are mentioned, but do **not generate any unnecessary information that isn't explicitly in the user's input**.
+   - Include dates for all of the mentioned things
 
 3. Generate a **comma-separated list** of a maximum of 15 unique Polish keywords based exclusively on:
    - The user's input content.
+   - Gathered information
+   - Dates in gathered information
+   - When including date, add also keywords mentioning word year, month, day
    - **Do not generate keywords based on any acknowledgment about missing details or lack of general knowledge in the description.** 
    - Translate all keywords into Polish before outputting them.
    - Ensure no formatting such as periods, extra characters, or newlines are included in the keyword list.
@@ -74,6 +78,22 @@ The user asks about the brightness of the sun. The sun emits light and energy th
 </description>
 <keywords>
 słońce, jasność, światło, energia, jasne niebo, fuzja jądrowa, wodór, hel, ciepło, życie na Ziemi, fotosynteza, nauka, astronomia, gwiazdy, klimat
+</keywords>
+
+---
+
+#### Example 4
+<user_input>
+Dlaczego używasz Facebook?
+</user_input>
+<english_translation>
+Why you use Facebook?
+</english_translation>
+<description>
+User is asking why you use a Facebook. Facebook is a social media platform. It was launched at 4th February 2004.
+</description>
+<keywords>
+pytanie, social media, 4, dzień, luty, miesiąc, 2024, rok, Facebook
 </keywords>
 """
 
