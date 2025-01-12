@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task0405.db
+package pl.bartek.aidevs.db.pdf
 
 import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.id.EntityID
@@ -11,7 +11,6 @@ abstract class BasePdfResource(
     var name by table.name
     var pages by table.pages
     var hash by table.hash
-    var keywords by table.keywords
     var pdfFile by PdfFile referencedOn table.pdfFile
 
     override fun toString(): String = "BasePdfResource(name='$name', hash='$hash', pdfFile=$pdfFile)"

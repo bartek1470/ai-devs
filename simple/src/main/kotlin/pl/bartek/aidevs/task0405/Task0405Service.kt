@@ -1,6 +1,5 @@
 package pl.bartek.aidevs.task0405
 
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.qdrant.client.QdrantClient
 import kotlinx.coroutines.Deferred
@@ -17,57 +16,50 @@ import org.apache.pdfbox.cos.COSName
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
-import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.document.Document
 import org.springframework.ai.model.Media
 import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.reader.ExtractedTextFormatter
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
-import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
-import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.core.io.PathResource
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaTypeFactory
 import org.springframework.stereotype.Service
+import org.springframework.util.SimpleIdGenerator
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.ai.document.transformer.DetailedPolishKeywordMetadataEnricher
 import pl.bartek.aidevs.ai.document.transformer.TextCleanupTransformer
 import pl.bartek.aidevs.ai.document.transformer.TitleEnricher
+import pl.bartek.aidevs.ai.document.transformer.hasKeywords
+import pl.bartek.aidevs.ai.document.transformer.keywords
 import pl.bartek.aidevs.course.TaskId
-import pl.bartek.aidevs.course.api.AiDevsAnswer
-import pl.bartek.aidevs.course.api.AiDevsAnswerResponse
 import pl.bartek.aidevs.course.api.AiDevsApiClient
-import pl.bartek.aidevs.course.api.Task
-import pl.bartek.aidevs.task0405.db.BasePdfResource
-import pl.bartek.aidevs.task0405.db.PdfFile
-import pl.bartek.aidevs.task0405.db.PdfFileTable
-import pl.bartek.aidevs.task0405.db.PdfImageResource
-import pl.bartek.aidevs.task0405.db.PdfImageResourceTable
-import pl.bartek.aidevs.task0405.db.PdfTextResource
-import pl.bartek.aidevs.task0405.db.PdfTextResourceTable
-import pl.bartek.aidevs.util.ansiFormattedError
-import pl.bartek.aidevs.util.ansiFormattedHuman
+import pl.bartek.aidevs.db.keywords.Keywords
+import pl.bartek.aidevs.db.keywords.KeywordsTable
+import pl.bartek.aidevs.db.pdf.PdfFile
+import pl.bartek.aidevs.db.pdf.PdfFileTable
+import pl.bartek.aidevs.db.pdf.PdfImageResource
+import pl.bartek.aidevs.db.pdf.PdfTextResource
+import pl.bartek.aidevs.db.pdf.PdfTextResourceTable
+import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
 import pl.bartek.aidevs.util.downloadFile
-import pl.bartek.aidevs.util.extractXmlRoot
 import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
 import pl.bartek.aidevs.util.resizeToFitSquare
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.UUID
 import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 import kotlin.io.path.Path
@@ -101,9 +93,9 @@ class Task0405Service(
     private val detailedPolishKeywordMetadataEnricher: DetailedPolishKeywordMetadataEnricher,
     private val textCleanupTransformer: TextCleanupTransformer,
     private val titleEnricher: TitleEnricher,
-    private val xmlMapper: XmlMapper,
 ) {
     private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
+    private val idGenerator = SimpleIdGenerator()
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -132,93 +124,21 @@ class Task0405Service(
         terminal.println("Processing text resources from PDF".ansiFormattedSecondaryInfo())
         appendMissingText(pdf)
 
-        terminal.println("Getting documents from DB".ansiFormattedSecondaryInfo())
-        val documentsFromDb = fetchDocuments(pdf)
-
-        terminal.println("Syncing keywords".ansiFormattedSecondaryInfo())
-        val documents: List<Document> = detailedPolishKeywordMetadataEnricher.transform(documentsFromDb)
-        syncKeywords(documents)
+        terminal.println("Fetching documents".ansiFormattedSecondaryInfo())
+        val documents = fetchDocuments(pdf)
 
         terminal.println("Adding documents to vector store".ansiFormattedSecondaryInfo())
-        val vectorStoreDocuments = transformMetadataToQdrantSupportedTypes(documents)
-        addDocumentsIfEmptyVectorStoreCollection(vectorStoreDocuments)
+        addDocumentsIfEmptyVectorStoreCollection(documents)
 
         terminal.println("Fetching questions".ansiFormattedSecondaryInfo())
-        val questions = fetchQuestions().toList()
+        val questions = fetchQuestions()
         terminal.println("Following questions will be asked".ansiFormattedSecondaryInfoTitle())
-        terminal.println("\t${questions.joinToString("\n\t")}".ansiFormattedSecondaryInfo())
-
-        var aiDevsAnswerResponse: AiDevsAnswerResponse
-        val answers = questions.toMutableList()
-        val previousTries = mutableListOf<Pair<String?, String?>>()
-        var currentQuestionIndex = 0
-        val maxTries = 5
-        do {
-            val (key, question) = questions[currentQuestionIndex]
-            val answer = answerQuestion(terminal, key, question, documents, previousTries)
-            answers[currentQuestionIndex] = key to (answer ?: "")
-            aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.NOTES, answers.toMap()))
-            terminal.println(aiDevsAnswerResponse)
-
-            if (!aiDevsAnswerResponse.message.contains(key) || aiDevsAnswerResponse.hint == null) {
-                currentQuestionIndex++
-                previousTries.clear()
-            } else if (maxTries == previousTries.size) {
-                terminal.println("Max tries reached. Aborting.".ansiFormattedError())
-                break
-            } else {
-                previousTries.add(aiDevsAnswerResponse.hint to answer)
-            }
-        } while (aiDevsAnswerResponse.isError() || currentQuestionIndex >= answers.size)
-    }
-
-    private fun answerQuestion(
-        terminal: Terminal,
-        key: String,
-        question: String,
-        documents: List<Document>,
-        previousTries: MutableList<Pair<String?, String?>>,
-    ): String? {
-        terminal.println("$key: $question".ansiFormattedHuman())
-
-        val cachedQuestionKeywords = cacheDir.resolve("${DigestUtils.md5Hex(question)}.txt")
-        val questionKeywords =
-            if (cachedQuestionKeywords.exists()) {
-                Files.readString(cachedQuestionKeywords).split(", ")
-            } else {
-                val keywords =
-                    detailedPolishKeywordMetadataEnricher
-                        .transform(listOf(Document(key, question, mapOf())))
-                        .flatMap { it.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS] as Set<String> }
-                        .also { Files.writeString(cachedQuestionKeywords, it.joinToString(", ")) }
-                keywords
-            }
-
-        val b = FilterExpressionBuilder()
-        val similarDocuments =
-            vectorStore.similaritySearch(
-                SearchRequest
-                    .builder()
-                    .query(question)
-                    .filterExpression(b.`in`("keywords", questionKeywords).build())
-                    .similarityThreshold(0.8)
-                    .build(),
-            ) ?: listOf()
-        terminal.println("Found ${similarDocuments.size} documents.")
-
-        val context =
-            documents.joinToString("\n\n") { doc ->
-                """
-                |## Document "${doc.metadata[TitleEnricher.METADATA_TITLE]}"
-                |${doc.text}
-                |
-                |Keywords: ${doc.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]}
-                """.trimMargin()
-            }
+        terminal.println("\t${questions.entries.joinToString("\n\t")}".ansiFormattedSecondaryInfo())
 
         val aiAnswer =
             chatService.sendToChat(
                 listOf(
+                    // TODO [bartek1470] modify the prompt to utilize tools
                     SystemMessage(
                         """
                         |Answer the user's question based on the provided context. Utilize the diary notes or other documents given in the context to deduce the most probable and concise answer. The final response should be translated into Polish and output in a specified XML format.
@@ -251,34 +171,38 @@ class Task0405Service(
                         |<result>
                         |2001
                         |</result>
-                        |
-                        |# CONTEXT
-                        |$context
-                        |
-                        |# PREVIOUS TRIES
-                        |${previousTries.joinToString("\n") { "Your previous answer: ${it.second}\nHint: ${it.first}" }}
                         """.trimMargin(),
                     ),
-                    UserMessage(question),
                 ),
-                chatOptions =
-                    ChatOptions
-                        .builder()
-//                                .temperature(0.3)
-                        .build(),
+                functions =
+                    listOf(
+                        AnswerQuestion.createFunctionCallback(questions, { generateKeywords(it) }, answerUrl, aiDevsApiClient, terminal),
+                        FetchContext.createFunctionCallback({ generateKeywords(it) }, vectorStore, terminal),
+                    ),
                 responseReceived = { terminal.print(it) },
             )
-        terminal.println()
-        return aiAnswer.extractXmlRoot()?.let {
-            try {
-                xmlMapper.readValue(it, String::class.java)
-            } catch (e: Exception) {
-                val message = "Failed to parse response XML"
-                log.error(e) { message }
-                terminal.println("$message. ${e.message}".ansiFormattedError())
-                null
-            }
-        }?.trim()
+
+        terminal.println(aiAnswer.ansiFormattedAi())
+    }
+
+    private fun generateKeywords(question: String): Set<String> =
+        transaction {
+            Keywords
+                .find { KeywordsTable.id eq Keywords.calculateHash(question) }
+                .singleOrNull()
+                ?: createKeywords(question)
+        }.keywords
+
+    private fun createKeywords(question: String): Keywords {
+        val generatedKeywords =
+            detailedPolishKeywordMetadataEnricher
+                .transform(listOf(Document(idGenerator.generateId().toString(), question, mapOf())))
+                .flatMap { it.keywords() }
+                .toSortedSet()
+
+        return Keywords.new(Keywords.calculateHash(question)) {
+            keywords = generatedKeywords
+        }
     }
 
     /**
@@ -302,50 +226,6 @@ class Task0405Service(
                 .build()
         }
 
-    private fun syncKeywords(documents: List<Document>) {
-        transaction {
-            val ids =
-                documents
-                    .filter { it.metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS] != null }
-                    .map { it.id }
-                    .map { UUID.fromString(it) }
-
-            val imageResources =
-                PdfImageResource.find { (PdfImageResourceTable.id inList ids) and (PdfImageResourceTable.keywords eq null) }
-            imageResources.forEach { resource ->
-                val doc = findDocument(resource, documents)
-                updateKeywordsInResource(resource, doc)
-            }
-
-            val textResources =
-                PdfTextResource.find { (PdfTextResourceTable.id inList ids) and (PdfTextResourceTable.keywords eq null) }
-            textResources.forEach { resource ->
-                val doc = findDocument(resource, documents)
-                updateKeywordsInResource(resource, doc)
-            }
-        }
-    }
-
-    private fun findDocument(
-        resource: BasePdfResource,
-        documents: List<Document>,
-    ): Document =
-        documents
-            .single {
-                it.id == resource.id.value.toString()
-            }
-
-    private fun updateKeywordsInResource(
-        resource: BasePdfResource,
-        document: Document,
-    ) {
-        document
-            .metadata[DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS]!!
-            .takeIf { it is Set<*> }
-            .let { it as Set<String> }
-            .also { resource.keywords = it }
-    }
-
     private fun addDocumentsIfEmptyVectorStoreCollection(documents: List<Document>) {
         val documentCountInDb = qdrantClient.countAsync(collectionName, 5.seconds.toJavaDuration()).get()
         if (documentCountInDb != 0L) {
@@ -353,7 +233,8 @@ class Task0405Service(
             return
         }
 
-        vectorStore.add(documents)
+        val qdrantDocs = transformMetadataToQdrantSupportedTypes(documents)
+        vectorStore.add(qdrantDocs)
     }
 
     fun appendMissingText(pdf: PdfFile) {
@@ -515,39 +396,70 @@ class Task0405Service(
             }
         }
 
-    private fun fetchDocuments(pdf: PdfFile): List<Document> =
-        transaction {
-            pdf.refresh()
-            val imageDocuments =
-                pdf.images.map {
+    private fun fetchDocuments(pdf: PdfFile): List<Document> {
+        val imageDocuments: List<Document> =
+            transaction {
+                pdf.refresh()
+                pdf.images.map { image ->
+                    val keywords =
+                        Keywords
+                            .find {
+                                KeywordsTable.id eq Keywords.calculateHash(image.description)
+                            }.singleOrNull()
+                            ?.keywords
                     Document(
-                        it.id.value.toString(),
-                        it.description,
+                        image.id.value.toString(),
+                        image.description,
                         buildMap {
-                            put(PagePdfDocumentReader.METADATA_FILE_NAME, it.filePath)
-                            put(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER, it.pages)
-                            if (it.keywords?.isNotEmpty() == true) {
-                                put(DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS, it.keywords)
-                            }
+                            put(PagePdfDocumentReader.METADATA_FILE_NAME, image.filePath)
+                            put(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER, image.pages)
+                            put(TitleEnricher.METADATA_TITLE, image.name)
+                            keywords?.run { put(DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS, this) }
                         },
                     )
                 }
-            val textDocuments =
-                pdf.text.map {
+            }.let { detailedPolishKeywordMetadataEnricher.transform(it) }
+
+        val textDocuments: List<Document> =
+            transaction {
+                pdf.refresh()
+                pdf.text.map { textResource ->
+                    val keywords =
+                        Keywords
+                            .find {
+                                KeywordsTable.id eq
+                                    Keywords.calculateHash(
+                                        textResource.content ?: textResource.originalContent,
+                                    )
+                            }.singleOrNull()
+                            ?.keywords
                     Document(
-                        it.id.value.toString(),
-                        it.content ?: it.originalContent,
+                        textResource.id.value.toString(),
+                        textResource.content ?: textResource.originalContent,
                         buildMap {
                             put(PagePdfDocumentReader.METADATA_FILE_NAME, pdf.filePath)
-                            put(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER, it.pages)
-                            if (it.keywords?.isNotEmpty() == true) {
-                                put(DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS, it.keywords)
+                            put(PagePdfDocumentReader.METADATA_START_PAGE_NUMBER, textResource.pages)
+                            put(TitleEnricher.METADATA_TITLE, textResource.name)
+                            if (textResource.content != null) {
+                                put(TextCleanupTransformer.METADATA_ORIGINAL_TEXT, textResource.originalContent)
                             }
+                            keywords?.run { put(DetailedPolishKeywordMetadataEnricher.METADATA_KEYWORDS, this) }
                         },
                     )
                 }
-            textDocuments + imageDocuments
+            }.let { detailedPolishKeywordMetadataEnricher.transform(it) }
+
+        val keywords =
+            (textDocuments + imageDocuments)
+                .filter { it.hasKeywords() }
+                .map { doc -> Keywords.calculateHash(doc.text!!) to doc.keywords() }
+        transaction {
+            keywords.forEach { (hash, keywords) ->
+                Keywords.new(hash) { this.keywords = keywords }
+            }
         }
+        return textDocuments + imageDocuments
+    }
 
     private suspend fun generateImageDescription(image: Resource): Deferred<String> =
         coroutineScope {

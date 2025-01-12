@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task0405.db
+package pl.bartek.aidevs.db.pdf
 
 object PdfImageResourceTable : BasePdfResourceTable("pdf_image_resource") {
     val extension = text("extension")

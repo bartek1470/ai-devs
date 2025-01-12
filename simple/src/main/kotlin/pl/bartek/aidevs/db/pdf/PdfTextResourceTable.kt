@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task0405.db
+package pl.bartek.aidevs.db.pdf
 
 object PdfTextResourceTable : BasePdfResourceTable("pdf_text_resource") {
     val content = text("content").nullable()

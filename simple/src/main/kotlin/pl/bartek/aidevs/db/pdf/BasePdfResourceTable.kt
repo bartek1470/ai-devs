@@ -1,7 +1,6 @@
-package pl.bartek.aidevs.task0405.db
+package pl.bartek.aidevs.db.pdf
 
 import org.jetbrains.exposed.dao.id.UUIDTable
-import pl.bartek.aidevs.db.NullableStringListToNullableSetTransformer
 import pl.bartek.aidevs.db.StringListToIntSetTransformer
 
 abstract class BasePdfResourceTable(
@@ -11,5 +10,4 @@ abstract class BasePdfResourceTable(
     val pages = text("pages").transform(StringListToIntSetTransformer)
     val pdfFile = reference("pdf_file", PdfFileTable)
     val hash = text("hash").uniqueIndex()
-    val keywords = text("keywords").nullable().transform(NullableStringListToNullableSetTransformer)
 }

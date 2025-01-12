@@ -10,6 +10,7 @@ import org.springframework.ai.document.DocumentTransformer
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.ai.document.transformer.DetailedPolishKeywordMetadataEnricher.Companion.METADATA_KEYWORDS
 import pl.bartek.aidevs.util.extractXmlRoot
 
 private const val SYSTEM_MESSAGE = """You are a keyword generator specialized in generating highly accurate and unique keywords specifically in Polish language.
@@ -96,6 +97,19 @@ User is asking why you use a Facebook. Facebook is a social media platform. It w
 pytanie, social media, 4, dzień, luty, miesiąc, 2024, rok, Facebook
 </keywords>
 """
+
+fun Document.keywords(): Set<String> {
+    val keywords = metadata[METADATA_KEYWORDS]
+    if (keywords is String) {
+        return keywords.split(",").toSortedSet()
+    }
+    return keywords as Set<String>? ?: throw IllegalStateException("Invalid document. Missing keywords")
+}
+
+fun Document.hasKeywords(): Boolean {
+    val keywords = metadata[METADATA_KEYWORDS]
+    return keywords is String || keywords is Set<*>
+}
 
 @Component
 class DetailedPolishKeywordMetadataEnricher(

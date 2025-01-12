@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.task0405.db
+package pl.bartek.aidevs.db.pdf
 
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.UUIDEntity

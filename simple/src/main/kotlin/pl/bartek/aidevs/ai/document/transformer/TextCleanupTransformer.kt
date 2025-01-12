@@ -9,6 +9,7 @@ import org.springframework.ai.document.DocumentTransformer
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.ai.document.transformer.TextCleanupTransformer.Companion.METADATA_ORIGINAL_TEXT
 
 private const val SYSTEM_MESSAGE = """Clean the provided user's text in Polish. Follow the steps below strictly:
 1. REMOVE unnecessary new lines and all extra spaces, including spaces between characters in individual words.
@@ -31,6 +32,9 @@ Output: "To jest zdanie z łańcuchem literówek"
 Input: "Ko t   ma  spad zor nione pióra   ."
 Output: "Kot ma spadzornione pióra."
 """
+
+fun Document.originalText(): String =
+    metadata[METADATA_ORIGINAL_TEXT]?.toString() ?: throw IllegalStateException("Invalid document. Missing original text")
 
 @Component
 class TextCleanupTransformer(
@@ -66,6 +70,6 @@ class TextCleanupTransformer(
 
     companion object {
         private val log = KotlinLogging.logger { }
-        const val METADATA_ORIGINAL_TEXT = "keywords"
+        const val METADATA_ORIGINAL_TEXT = "original_text"
     }
 }
