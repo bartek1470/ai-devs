@@ -18,7 +18,7 @@ class TranscriptService(
     @Value("\${aidevs.cache-dir}") private val cacheDir: Path,
     @Value("\${aidevs.ollama.unload-before-whisper:false}") private val unloadOllamaBeforeWhisper: Boolean,
     @Value("\${python.packages.path}") private val pythonPackagesPath: Path,
-    private val ollamaManager: OllamaManager,
+    private val ollamaManager: OllamaManager?,
 ) {
     // TODO [bartek1470] second option -> OpenAiAudioTranscriptionModel - via OpenAI API
     // TODO [bartek1470] third option -> https://github.com/ggerganov/whisper.cpp
@@ -52,7 +52,7 @@ class TranscriptService(
         outputDirectory: Path,
     ) {
         if (unloadOllamaBeforeWhisper) {
-            ollamaManager.unloadModels()
+            ollamaManager?.unloadModels()
         }
 
         try {
