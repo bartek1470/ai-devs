@@ -2,9 +2,9 @@ package pl.bartek.aidevs.task0103
 
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.client.ChatClient
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
@@ -16,9 +16,7 @@ import pl.bartek.aidevs.util.println
 )
 class Task0103Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.0103.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0103.answer-url}") private val answerUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val chatClient: ChatClient,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
@@ -58,10 +56,10 @@ class Task0103Command(
 
         val answer =
             aiDevsApiClient.sendAnswer(
-                answerUrl,
+                aiDevsProperties.reportUrl,
                 AiDevsAnswer(
                     Task.JSON,
-                    industrialRobotCalibrationFile.copy(apiKey = apiKey, testData = newTestData),
+                    industrialRobotCalibrationFile.copy(apiKey = aiDevsProperties.apiKey, testData = newTestData),
                 ),
             )
         terminal.println(answer)
@@ -70,7 +68,10 @@ class Task0103Command(
     private fun fetchInputData(): IndustrialRobotCalibrationFile =
         restClient
             .get()
-            .uri(dataUrl, apiKey)
-            .retrieve()
+            .uri(
+                aiDevsProperties.task.task0103.dataUrl
+                    .toString(),
+                aiDevsProperties.apiKey,
+            ).retrieve()
             .body(IndustrialRobotCalibrationFile::class.java) ?: throw IllegalStateException("Cannot get data to process")
 }

@@ -2,10 +2,10 @@ package pl.bartek.aidevs.task0102
 
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.client.ChatClient
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedHuman
@@ -21,7 +21,7 @@ import pl.bartek.aidevs.util.println
 )
 class Task0102Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.task.0102.conversation-url}") private val conversationUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val restClient: RestClient,
     private val chatClient: ChatClient,
 ) {
@@ -76,8 +76,10 @@ class Task0102Command(
         val responseMessage =
             restClient
                 .post()
-                .uri(conversationUrl)
-                .body(PatrollingRobotMessage(messageId = patrollingRobotConversation.messageId, text = message))
+                .uri(
+                    aiDevsProperties.task.task0102.conversationUrl
+                        .toURI(),
+                ).body(PatrollingRobotMessage(messageId = patrollingRobotConversation.messageId, text = message))
                 .retrieve()
                 .body<PatrollingRobotMessage>() ?: throw IllegalStateException("No response provided")
 

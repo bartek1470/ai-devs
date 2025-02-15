@@ -4,7 +4,6 @@ import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.springframework.ai.chat.client.ChatClient
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -12,6 +11,7 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedSuccess
@@ -25,9 +25,7 @@ import pl.bartek.aidevs.util.removeExtraWhitespaces
 )
 class Task0101Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.task.0101.robot-system.url}") private val robotSystemUrl: String,
-    @Value("\${aidevs.task.0101.robot-system.username}") private val robotSystemUsername: String,
-    @Value("\${aidevs.task.0101.robot-system.password}") private val robotSystemPassword: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val restClient: RestClient,
     private val chatClient: ChatClient,
 ) {
@@ -67,7 +65,7 @@ class Task0101Command(
         val location = response.headers["location"]?.first()!!
         val newLink =
             UriComponentsBuilder
-                .fromHttpUrl(robotSystemUrl)
+                .fromHttpUrl(aiDevsProperties.task.task0101.url)
                 .pathSegment(location)
                 .build()
                 .toUriString()
@@ -88,13 +86,13 @@ class Task0101Command(
         val response =
             restClient
                 .post()
-                .uri(robotSystemUrl)
+                .uri(aiDevsProperties.task.task0101.url)
                 .accept(MediaType.ALL)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(
                     LinkedMultiValueMap<String, String>().apply {
-                        add("username", robotSystemUsername)
-                        add("password", robotSystemPassword)
+                        add("username", aiDevsProperties.task.task0101.username)
+                        add("password", aiDevsProperties.task.task0101.password)
                         add("answer", answer)
                     },
                 ).retrieve()
@@ -128,7 +126,7 @@ class Task0101Command(
     }
 
     private fun findQuestion(): String {
-        val robotSystemPage = Jsoup.connect(robotSystemUrl).get()
+        val robotSystemPage = Jsoup.connect(aiDevsProperties.task.task0101.url).get()
         val question = robotSystemPage.select("#human-question").text()
         terminal.println(question)
         return question

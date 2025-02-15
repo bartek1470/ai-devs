@@ -8,6 +8,7 @@ import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
+import java.net.URL
 
 @Component
 class AiDevsApiClient(
@@ -16,14 +17,14 @@ class AiDevsApiClient(
     private val restClient: RestClient,
 ) {
     fun <T> sendAnswer(
-        uri: String,
+        url: URL,
         answer: AiDevsAnswer<T>,
     ): AiDevsAnswerResponse {
         val authenticatedAnswer = AiDevsAuthenticatedAnswer(answer.task.taskName, answer.answer, apiKey)
         val responseSpec =
             restClient
                 .post()
-                .uri(uri)
+                .uri(url.toURI())
                 .headers { headers ->
                     headers.add(ACCEPT, APPLICATION_JSON_VALUE)
                     headers.add(CONTENT_TYPE, APPLICATION_JSON_VALUE)
@@ -35,14 +36,14 @@ class AiDevsApiClient(
     }
 
     fun <T> sendAnswerReceiveText(
-        uri: String,
+        url: URL,
         answer: AiDevsAnswer<T>,
     ): String {
         val authenticatedAnswer = AiDevsAuthenticatedAnswer(answer.task.taskName, answer.answer, apiKey)
         val responseSpec =
             restClient
                 .post()
-                .uri(uri)
+                .uri(url.toURI())
                 .headers { headers ->
                     headers.add(ACCEPT, APPLICATION_JSON_VALUE)
                     headers.add(CONTENT_TYPE, APPLICATION_JSON_VALUE)
