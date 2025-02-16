@@ -12,6 +12,7 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.config.Profile.QDRANT
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
@@ -31,17 +32,14 @@ private const val DATE_METADATA_KEY = "report_date"
 @Profile(QDRANT)
 @Service
 class Task0302Service(
-    @Value("\${aidevs.cache-dir}") cacheDir: Path,
-    @Value("\${aidevs.task.0302.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0302.data-password}") private val dataPassword: CharArray,
-    @Value("\${aidevs.task.0302.answer-url}") private val answerUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val vectorStore: VectorStore,
     private val qdrantClient: QdrantClient,
 ) {
-    private val cacheDir = cacheDir.resolve(TaskId.TASK_0302.cacheFolderName())
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0302.cacheFolderName())
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -80,15 +78,17 @@ class Task0302Service(
                 ?.get(DATE_METADATA_KEY)
                 ?.toString()
 
-        val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.WEKTORY, date))
+        val answer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.WEKTORY, date))
         terminal.println(answer)
     }
 
     private fun fetchInputData(): Path {
         val uriComponents =
             UriComponentsBuilder
-                .fromHttpUrl(dataUrl)
-                .build()
+                .fromUri(
+                    aiDevsProperties.task.task0302.dataUrl
+                        .toURI(),
+                ).build()
         val filename = uriComponents.pathSegments[uriComponents.pathSegments.size - 1]!!
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)
@@ -116,7 +116,11 @@ class Task0302Service(
         }
         zipFilePath.unzip(extractedZipPath)
         Files.delete(zipFilePath)
-        dataZipPath.unzip(extractedDataZipPath, dataPassword)
+        dataZipPath.unzip(
+            extractedDataZipPath,
+            aiDevsProperties.task.task0302.dataPassword
+                .toCharArray(),
+        )
         Files.delete(dataZipPath)
         return inputDataPath
     }

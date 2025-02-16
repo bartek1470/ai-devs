@@ -7,10 +7,9 @@ import org.springframework.ai.autoconfigure.openai.OpenAiConnectionProperties
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
+import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionMessage
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.HttpHeaders
@@ -23,6 +22,7 @@ import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.ai.openai.api.model.CreateFineTuningJobRequest
 import pl.bartek.aidevs.ai.openai.api.model.CreateFineTuningJobResponse
 import pl.bartek.aidevs.ai.openai.api.model.FileResponse
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.config.Profile.OPENAI
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
@@ -42,16 +42,14 @@ private const val SYSTEM_MESSAGE_CONTENT = "Is this sample correct? Answer true 
 @Profile(OPENAI)
 @Service
 class Task0402Service(
-    @Value("\${aidevs.cache-dir}") cacheDir: String,
-    @Value("\${aidevs.task.0402.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.task.0402.data-url}") private val dataUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     openAiConnectionProperties: OpenAiConnectionProperties,
     private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
     private val chatService: ChatService,
     private val aiDevsApiClient: AiDevsApiClient,
 ) {
-    private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0402.cacheFolderName()).absolute()
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0402.cacheFolderName()).absolute()
 
     private val openAiRestClient =
         restClient
@@ -66,7 +64,13 @@ class Task0402Service(
     }
 
     fun startFineTuning(terminal: Terminal) {
-        val dataPath = fetchData(dataUrl, restClient, cacheDir)
+        val dataPath =
+            fetchData(
+                aiDevsProperties.task.task0402.dataUrl
+                    .toString(),
+                restClient,
+                cacheDir,
+            )
         val fineTuningPath = createFineTuningFile(dataPath)
 
         val fileResult =
@@ -163,7 +167,13 @@ class Task0402Service(
         modelName: String,
         terminal: Terminal,
     ) {
-        val dataPath = fetchData(dataUrl, restClient, cacheDir)
+        val dataPath =
+            fetchData(
+                aiDevsProperties.task.task0402.dataUrl
+                    .toString(),
+                restClient,
+                cacheDir,
+            )
         val samplesToVerify =
             dataPath
                 .resolve("verify.txt")
@@ -181,10 +191,10 @@ class Task0402Service(
                                 UserMessage(entry.value),
                             ),
                         chatOptions =
-                            PortableFunctionCallingOptions
+                            ChatOptions
                                 .builder()
-                                .withModel(modelName)
-                                .withTemperature(0.0)
+                                .model(modelName)
+                                .temperature(0.0)
                                 .build(),
                         streaming = false,
                         cachePath = cacheDir.resolve("sample-${entry.key}.txt"),
@@ -199,7 +209,7 @@ class Task0402Service(
                 .filterValues { it }
                 .toList()
                 .map { it.first }
-        val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.RESEARCH, correctResults))
+        val answer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.RESEARCH, correctResults))
         terminal.println(answer)
     }
 

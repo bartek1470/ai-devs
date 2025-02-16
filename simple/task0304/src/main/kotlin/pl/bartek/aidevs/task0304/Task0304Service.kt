@@ -5,19 +5,18 @@ import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
 import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.openai.api.OpenAiApi.ChatModel
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
 import org.springframework.boot.ansi.AnsiColor.YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -31,22 +30,17 @@ import pl.bartek.aidevs.util.println
 import pl.bartek.aidevs.util.replaceNonBreakingSpaces
 import pl.bartek.aidevs.util.stripAccents
 import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.writeText
 
 @Service
 class Task0304Service(
-    @Value("\${aidevs.cache-dir}") cacheDir: Path,
-    @Value("\${aidevs.task.0304.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0304.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.0304.api-url}") private val apiUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatService: ChatService,
 ) {
-    private val cacheDir = cacheDir.resolve(TaskId.TASK_0304.cacheFolderName())
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0304.cacheFolderName())
 
     private val xmlMapper =
         XmlMapper
@@ -115,7 +109,13 @@ class Task0304Service(
                     DefaultFunctionCallbackBuilder()
                         .function(
                             "people",
-                            SendAskApiRequest(apiKey, restClient, apiUrl, "people") {
+                            SendAskApiRequest(
+                                aiDevsProperties.apiKey,
+                                restClient,
+                                aiDevsProperties.task.task0304.apiUrl
+                                    .toString(),
+                                "people",
+                            ) {
                                 terminal.println()
                                 terminal.println("People".ansiFormatted(style = BOLD, color = BRIGHT_YELLOW))
                                 terminal.println(
@@ -135,7 +135,13 @@ class Task0304Service(
                     DefaultFunctionCallbackBuilder()
                         .function(
                             "places",
-                            SendAskApiRequest(apiKey, restClient, apiUrl, "places") {
+                            SendAskApiRequest(
+                                aiDevsProperties.apiKey,
+                                restClient,
+                                aiDevsProperties.task.task0304.apiUrl
+                                    .toString(),
+                                "places",
+                            ) {
                                 terminal.println()
                                 terminal.println("Places".ansiFormatted(style = BOLD, color = BRIGHT_YELLOW))
                                 terminal.println(
@@ -175,7 +181,7 @@ class Task0304Service(
         val resultList = multipleAnswers.split("\n").filter { it.isNotBlank() }.map { it.trim() }
 
         resultList.forEach { result ->
-            val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.LOOP, result))
+            val answer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.LOOP, result))
             terminal.println(answer)
         }
     }
@@ -232,14 +238,12 @@ class Task0304Service(
         val text =
             restClient
                 .get()
-                .uri(dataUrl)
-                .retrieve()
+                .uri(
+                    aiDevsProperties.task.task0304.dataUrl
+                        .toURI(),
+                ).retrieve()
                 .body(String::class.java)!!
         cachedDataPath.writeText(text)
         return text
-    }
-
-    companion object {
-        private val log = KotlinLogging.logger { }
     }
 }

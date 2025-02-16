@@ -41,6 +41,7 @@ import pl.bartek.aidevs.ai.document.transformer.TextCleanupTransformer
 import pl.bartek.aidevs.ai.document.transformer.TitleEnricher
 import pl.bartek.aidevs.ai.document.transformer.hasKeywords
 import pl.bartek.aidevs.ai.document.transformer.keywords
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.db.keywords.Keywords
@@ -78,11 +79,7 @@ private const val SMALL_IMAGE_SUFFIX = "_small"
 // @Profile(QDRANT, OPENAI)
 @Service
 class Task0405Service(
-    @Value("\${aidevs.cache-dir}") cacheDir: String,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.0405.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.task.0405.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0405.questions-url}") private val questionsUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
     @Value("\${aidevs.image-description.model}") private val imageDescriptionModel: String,
     private val restClient: RestClient,
@@ -94,7 +91,7 @@ class Task0405Service(
     private val textCleanupTransformer: TextCleanupTransformer,
     private val titleEnricher: TitleEnricher,
 ) {
-    private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0405.cacheFolderName()).absolute()
     private val idGenerator = SimpleIdGenerator()
 
     init {
@@ -102,8 +99,14 @@ class Task0405Service(
     }
 
     fun run(terminal: Terminal) {
-        terminal.println("Downloading pdf file from $dataUrl".ansiFormattedSecondaryInfo())
-        val pdfPath = restClient.downloadFile(dataUrl, apiKey, cacheDir)
+        terminal.println("Downloading pdf file from ${aiDevsProperties.task.task0405.dataUrl}".ansiFormattedSecondaryInfo())
+        val pdfPath =
+            restClient.downloadFile(
+                aiDevsProperties.task.task0405.dataUrl
+                    .toString(),
+                aiDevsProperties.apiKey,
+                cacheDir,
+            )
 
         terminal.println("Obtaining PDF file from DB".ansiFormattedSecondaryInfo())
         val pdf =
@@ -176,7 +179,16 @@ class Task0405Service(
                 ),
                 functions =
                     listOf(
-                        AnswerQuestion.createFunctionCallback(questions, { generateKeywords(it) }, answerUrl, aiDevsApiClient, terminal),
+                        AnswerQuestion.createFunctionCallback(
+                            questions,
+                            {
+                                generateKeywords(it)
+                            },
+                            aiDevsProperties.task.task0405.dataUrl
+                                .toString(),
+                            aiDevsApiClient,
+                            terminal,
+                        ),
                         FetchContext.createFunctionCallback({ generateKeywords(it) }, vectorStore, terminal),
                     ),
                 responseReceived = { terminal.print(it) },
@@ -601,8 +613,11 @@ class Task0405Service(
     private fun fetchQuestions(): Map<String, String> =
         restClient
             .get()
-            .uri(questionsUrl, apiKey)
-            .retrieve()
+            .uri(
+                aiDevsProperties.task.task0405.questionsUrl
+                    .toString(),
+                aiDevsProperties.apiKey,
+            ).retrieve()
             .body(object : ParameterizedTypeReference<Map<String, String>>() {})
             ?: throw IllegalStateException("Missing body")
 

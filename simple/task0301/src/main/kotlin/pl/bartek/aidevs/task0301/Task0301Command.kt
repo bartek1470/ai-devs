@@ -9,14 +9,14 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.openai.OpenAiChatOptions
+import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.openai.api.OpenAiApi.ChatModel
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -37,14 +37,12 @@ import kotlin.io.path.readText
 )
 class Task0301Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.cache-dir}") cacheDir: Path,
-    @Value("\${aidevs.task.0301.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0301.answer-url}") private val answerUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatService: ChatService,
 ) {
-    private val cacheDir = cacheDir.resolve(TaskId.TASK_0301.cacheFolderName())
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0301.cacheFolderName())
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -117,7 +115,7 @@ class Task0301Command(
                                     """.trimMargin(),
                                 ),
                             ),
-                            chatOptions = OpenAiChatOptions.builder().withModel(ChatModel.GPT_4_O).build(),
+                            chatOptions = ChatOptions.builder().model(ChatModel.GPT_4_O.value).build(),
                         ) { terminal.print(it) }
                     terminal.println()
                     terminal.println()
@@ -142,15 +140,17 @@ class Task0301Command(
                     Pair(report.first, resultXmlContent.trim())
                 }.associate { it.first.fileName.toString() to it.second }
 
-        val aiDevsAnswer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.DOKUMENTY, taskAnswer))
+        val aiDevsAnswer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.DOKUMENTY, taskAnswer))
         terminal.println(aiDevsAnswer)
     }
 
     private fun fetchInputData(): Path {
         val uriComponents =
             UriComponentsBuilder
-                .fromHttpUrl(dataUrl)
-                .build()
+                .fromUri(
+                    aiDevsProperties.task.task0301.dataUrl
+                        .toURI(),
+                ).build()
         val filename = uriComponents.pathSegments[uriComponents.pathSegments.size - 1]!!
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)

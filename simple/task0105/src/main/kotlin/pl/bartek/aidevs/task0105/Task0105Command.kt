@@ -6,10 +6,9 @@ import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
-import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
@@ -25,19 +24,11 @@ import java.util.stream.Collectors
 )
 class Task0105Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.0105.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0105.answer-url}") private val answerUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatClient: ChatClient,
 ) {
-    private val chatOptions: ChatOptions =
-        PortableFunctionCallingOptions
-            .builder()
-            .withTemperature(.0)
-            .build()
-
     @Command(command = ["0105"], description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s01e05-produkcja")
     fun run() {
         val toBeConsored = fetchInputData()
@@ -87,7 +78,10 @@ class Task0105Command(
                             ),
                             UserMessage(toBeConsored),
                         ),
-                        chatOptions,
+                        ChatOptions
+                            .builder()
+                            .temperature(.0)
+                            .build(),
                     ),
                 ).stream()
                 .content()
@@ -98,7 +92,7 @@ class Task0105Command(
 
         terminal.println()
 
-        val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.CENZURA, response))
+        val answer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.CENZURA, response))
         terminal.println()
         terminal.println()
         terminal.println(answer)
@@ -107,7 +101,10 @@ class Task0105Command(
     private fun fetchInputData(): String =
         restClient
             .get()
-            .uri(dataUrl, apiKey)
-            .retrieve()
+            .uri(
+                aiDevsProperties.task.task0105.dataUrl
+                    .toString(),
+                aiDevsProperties.apiKey,
+            ).retrieve()
             .body(String::class.java) ?: throw IllegalStateException("Cannot get data to process")
 }

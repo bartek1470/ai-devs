@@ -5,12 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedSuccess
 import pl.bartek.aidevs.util.println
@@ -21,8 +21,7 @@ import pl.bartek.aidevs.util.println
 )
 class Task0104Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.task.0104.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.task.0104.file-base-url}") private val fileBaseUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val restClient: RestClient,
 ) {
     @Command(
@@ -53,8 +52,10 @@ class Task0104Command(
         val response =
             restClient
                 .post()
-                .uri(answerUrl)
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .uri(
+                    aiDevsProperties.task.task0104.answerUrl
+                        .toURI(),
+                ).contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(
                     LinkedMultiValueMap<String, String>().apply {
                         add(
@@ -75,8 +76,10 @@ class Task0104Command(
         val filename = value["filename"]!!.textValue()
         val fileUrl =
             UriComponentsBuilder
-                .fromHttpUrl(fileBaseUrl)
-                .pathSegment(filename)
+                .fromUri(
+                    aiDevsProperties.task.task0104.fileBaseUrl
+                        .toURI(),
+                ).pathSegment(filename)
                 .build()
                 .toUriString()
 

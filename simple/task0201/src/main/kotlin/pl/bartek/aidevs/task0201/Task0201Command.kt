@@ -8,7 +8,6 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.client.ChatClient
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
@@ -17,6 +16,7 @@ import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.ai.transcript.FileToTranscribe
 import pl.bartek.aidevs.ai.transcript.TranscriptService
 import pl.bartek.aidevs.ai.transcript.WhisperLanguage
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -32,7 +32,6 @@ import pl.bartek.aidevs.util.titleCase
 import pl.bartek.aidevs.util.unzip
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.stream.Collectors
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
@@ -43,15 +42,13 @@ import kotlin.io.path.nameWithoutExtension
 )
 class Task0201Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.cache-dir}") cacheDir: String,
-    @Value("\${aidevs.task.0201.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0201.answer-url}") private val answerUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatClient: ChatClient,
     private val transcriptService: TranscriptService,
 ) {
-    private val cacheDir = Paths.get(cacheDir, TaskId.TASK_0201.cacheFolderName())
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0201.cacheFolderName())
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -143,7 +140,7 @@ class Task0201Command(
         terminal.println()
 
         val aiResponse = extractAnswer(response)
-        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.MP3, aiResponse.streetName))
+        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.MP3, aiResponse.streetName))
         terminal.println(aiDevsAnswerResponse)
     }
 
@@ -172,8 +169,10 @@ class Task0201Command(
     private fun fetchInputData(): Path {
         val uriComponents =
             UriComponentsBuilder
-                .fromHttpUrl(dataUrl)
-                .build()
+                .fromUri(
+                    aiDevsProperties.task.task0201.dataUrl
+                        .toURI(),
+                ).build()
         val filename = uriComponents.pathSegments[uriComponents.pathSegments.size - 1]!!
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)

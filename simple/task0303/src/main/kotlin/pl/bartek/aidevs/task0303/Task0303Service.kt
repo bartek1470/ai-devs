@@ -5,10 +5,10 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -17,19 +17,15 @@ import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
 import java.nio.file.Files
-import java.nio.file.Path
 
 @Service
 class Task0303Service(
-    @Value("\${aidevs.cache-dir}") cacheDir: Path,
-    @Value("\${aidevs.task.0303.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.0303.api-url}") private val apiUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val restClient: RestClient,
     private val aiDevsApiClient: AiDevsApiClient,
     private val chatService: ChatService,
 ) {
-    private val cacheDir = cacheDir.resolve(TaskId.TASK_0303.cacheFolderName())
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0303.cacheFolderName())
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -64,8 +60,15 @@ class Task0303Service(
                 ),
                 listOf(
                     DefaultFunctionCallbackBuilder()
-                        .function("sendDbApiRequest", SendDbApiRequest(apiKey, apiUrl, restClient))
-                        .description("Execute database query")
+                        .function(
+                            "sendDbApiRequest",
+                            SendDbApiRequest(
+                                aiDevsProperties.apiKey,
+                                aiDevsProperties.task.task0303.apiUrl
+                                    .toString(),
+                                restClient,
+                            ),
+                        ).description("Execute database query")
                         .inputType(SendDbApiRequest::class.java)
                         .build(),
                 ),
@@ -85,7 +88,7 @@ class Task0303Service(
 
         val datacenterIds =
             ids.map { it.toLong() }
-        val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.DATABASE, datacenterIds))
+        val answer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.DATABASE, datacenterIds))
         terminal.println(answer)
     }
 

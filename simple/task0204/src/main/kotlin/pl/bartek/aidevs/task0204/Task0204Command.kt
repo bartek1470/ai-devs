@@ -5,7 +5,6 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.Media
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
@@ -16,6 +15,7 @@ import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.ai.transcript.FileToTranscribe
 import pl.bartek.aidevs.ai.transcript.TranscriptService
 import pl.bartek.aidevs.ai.transcript.WhisperLanguage
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -29,7 +29,6 @@ import pl.bartek.aidevs.util.unzip
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.stream.Stream
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
@@ -40,15 +39,13 @@ import kotlin.io.path.nameWithoutExtension
 )
 class Task0204Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.cache-dir}") cacheDir: String,
-    @Value("\${aidevs.task.0204.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0204.answer-url}") private val answerUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatService: ChatService,
     private val transcriptService: TranscriptService,
 ) {
-    private val cacheDir = Paths.get(cacheDir, TaskId.TASK_0204.cacheFolderName())
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0204.cacheFolderName())
 
     private val prompt =
         """
@@ -111,7 +108,7 @@ class Task0204Command(
         terminal.println("Hardware:\n\t${answer.hardware.joinToString("\n\t")}".ansiFormattedSecondaryInfo())
         terminal.println()
 
-        val aiDevsAnswer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.KATEGORIE, answer))
+        val aiDevsAnswer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.KATEGORIE, answer))
         terminal.println(aiDevsAnswer)
     }
 
@@ -152,8 +149,10 @@ class Task0204Command(
     private fun fetchInputData(): Path {
         val uriComponents =
             UriComponentsBuilder
-                .fromHttpUrl(dataUrl)
-                .build()
+                .fromUri(
+                    aiDevsProperties.task.task0204.dataUrl
+                        .toURI(),
+                ).build()
         val filename = uriComponents.pathSegments[uriComponents.pathSegments.size - 1]!!
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)

@@ -13,7 +13,6 @@ import org.springframework.ai.model.Media
 import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
 import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.openai.api.OpenAiApi
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.core.io.FileSystemResource
@@ -22,6 +21,7 @@ import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
 import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswerResponse
 import pl.bartek.aidevs.course.api.AiDevsAuthenticatedAnswer
@@ -33,22 +33,19 @@ import pl.bartek.aidevs.util.extractXmlRoot
 import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
 import java.nio.file.Files
-import kotlin.io.path.Path
 import kotlin.io.path.absolute
 import kotlin.io.path.nameWithoutExtension
 
 @Service
 class Task0401Service(
-    @Value("\${aidevs.task.0401.photos-url}") private val photosUrl: String,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.cache-dir}") cacheDir: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val chatService: ChatService,
     private val objectMapper: ObjectMapper,
     restClient: RestClient,
 ) {
-    private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0401.cacheFolderName()).absolute()
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0401.cacheFolderName()).absolute()
 
-    private val restClient = restClient.mutate().baseUrl(photosUrl).build()
+    private val restClient = restClient.mutate().baseUrl(aiDevsProperties.reportUrl.toString()).build()
 
     private val xmlMapper =
         XmlMapper
@@ -133,7 +130,7 @@ class Task0401Service(
                                                     AiDevsAuthenticatedAnswer(
                                                         Task.PHOTOS.taskName,
                                                         operation,
-                                                        apiKey,
+                                                        aiDevsProperties.apiKey,
                                                     ),
                                                 ),
                                             ).retrieve()
@@ -245,7 +242,7 @@ class Task0401Service(
             AiDevsAuthenticatedAnswer(
                 Task.PHOTOS.taskName,
                 barbaraDescription,
-                apiKey,
+                aiDevsProperties.apiKey,
             )
         val body = objectMapper.writeValueAsString(answerObj)
         val answer =

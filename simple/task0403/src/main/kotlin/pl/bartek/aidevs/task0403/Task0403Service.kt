@@ -1,6 +1,5 @@
 package pl.bartek.aidevs.task0403
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
@@ -13,6 +12,7 @@ import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -29,17 +29,13 @@ import kotlin.io.path.absolute
 
 @Service
 class Task0403Service(
-    @Value("\${aidevs.cache-dir}") cacheDir: String,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.0403.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.task.0403.base-url}") private val baseUrl: String,
-    @Value("\${aidevs.task.0403.questions-url}") private val questionsUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     @Value("\${python.packages.path}") pythonPackagesPath: Path,
     private val restClient: RestClient,
     private val chatService: ChatService,
     private val aiDevsApiClient: AiDevsApiClient,
 ) {
-    private val cacheDir = Path(cacheDir).resolve(TaskId.TASK_0403.cacheFolderName()).absolute()
+    private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0403.cacheFolderName()).absolute()
     private val markitdownExecPath = pythonPackagesPath.resolve("markitdown").toAbsolutePath().toString()
 
     init {
@@ -51,7 +47,8 @@ class Task0403Service(
         val sitesTempDir = Files.createTempDirectory(this.cacheDir, "sites")
         val visitSiteAction =
             VisitSiteAction(
-                baseUrl,
+                aiDevsProperties.task.task0403.baseUrl
+                    .toString(),
                 sitesTempDir,
             ) { htmlPath -> markitdownExecPath.executeCommand(htmlPath.toString()) }
 
@@ -102,7 +99,7 @@ class Task0403Service(
                 aiResponse
             }
 
-        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.SOFTO, answers))
+        val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.SOFTO, answers))
         terminal.println()
         terminal.println(aiDevsAnswerResponse)
     }
@@ -110,11 +107,10 @@ class Task0403Service(
     private fun fetchQuestions(): Map<String, String> =
         restClient
             .get()
-            .uri(questionsUrl, apiKey)
-            .retrieve()
+            .uri(
+                aiDevsProperties.task.task0403.questionsUrl
+                    .toString(),
+                aiDevsProperties.apiKey,
+            ).retrieve()
             .body(object : ParameterizedTypeReference<Map<String, String>>() {}) ?: throw IllegalStateException("Missing body")
-
-    companion object {
-        private val log = KotlinLogging.logger { }
-    }
 }

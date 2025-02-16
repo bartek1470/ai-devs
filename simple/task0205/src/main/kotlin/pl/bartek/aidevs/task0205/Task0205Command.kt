@@ -1,13 +1,11 @@
 package pl.bartek.aidevs.task0205
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.Media
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.UrlResource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
@@ -16,6 +14,7 @@ import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.ai.transcript.FileToTranscribe
 import pl.bartek.aidevs.ai.transcript.TranscriptService
 import pl.bartek.aidevs.ai.transcript.WhisperLanguage.POLISH
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -32,10 +31,7 @@ import pl.bartek.aidevs.util.println
 )
 class Task0205Command(
     private val terminal: Terminal,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
-    @Value("\${aidevs.task.0205.data-url}") private val dataUrl: String,
-    @Value("\${aidevs.task.0205.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.task.0205.article-url}") private val articleUrl: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatService: ChatService,
@@ -49,7 +45,12 @@ class Task0205Command(
         val questions = fetchInputData()
         terminal.println("Pytania:".ansiFormattedSecondaryInfoTitle())
         terminal.println(questions.entries.joinToString("\n").ansiFormattedSecondaryInfo())
-        val article = Jsoup.connect(articleUrl).get()
+        val article =
+            Jsoup
+                .connect(
+                    aiDevsProperties.task.task0205.articleUrl
+                        .toString(),
+                ).get()
 
         val figureElements = article.body().select("figure")
         for (figure in figureElements) {
@@ -118,7 +119,7 @@ class Task0205Command(
                 response
             }
 
-        val aiDevsAnswer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.ARXIV, answers))
+        val aiDevsAnswer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.ARXIV, answers))
         terminal.println(aiDevsAnswer)
     }
 
@@ -126,8 +127,11 @@ class Task0205Command(
         val body =
             restClient
                 .get()
-                .uri(dataUrl, apiKey)
-                .retrieve()
+                .uri(
+                    aiDevsProperties.task.task0205.dataUrl
+                        .toString(),
+                    aiDevsProperties.apiKey,
+                ).retrieve()
                 .body(String::class.java) ?: throw IllegalStateException("Missing body")
 
         return body
@@ -135,9 +139,5 @@ class Task0205Command(
             .filter { it.isNotBlank() }
             .map { it.split("=") }
             .associate { it[0] to it[1] }
-    }
-
-    companion object {
-        private val log = KotlinLogging.logger { }
     }
 }

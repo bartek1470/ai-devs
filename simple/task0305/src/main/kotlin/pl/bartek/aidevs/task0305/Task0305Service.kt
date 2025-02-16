@@ -10,10 +10,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jline.terminal.Terminal
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
@@ -23,9 +23,7 @@ import kotlin.jvm.optionals.getOrNull
 
 @Service
 class Task0305Service(
-    @Value("\${aidevs.task.0303.api-url}") private val apiUrl: String,
-    @Value("\${aidevs.task.0303.answer-url}") private val answerUrl: String,
-    @Value("\${aidevs.api-key}") private val apiKey: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val restClient: RestClient,
     private val userRepository: UserRepository,
     private val aiDevsApiClient: AiDevsApiClient,
@@ -69,7 +67,7 @@ class Task0305Service(
 
         terminal.println("Waiting for submitting answer")
         val shortestPath = userRepository.findShortestPath("Rafał", "Barbara").map { it.username }.joinToString(", ")
-        val answer = aiDevsApiClient.sendAnswer(answerUrl, AiDevsAnswer(Task.CONNECTIONS, shortestPath))
+        val answer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.CONNECTIONS, shortestPath))
         terminal.println(answer)
     }
 
@@ -78,8 +76,10 @@ class Task0305Service(
             val countResponse =
                 restClient
                     .post()
-                    .uri(apiUrl)
-                    .body(DbRequest("select count(*) as user_count from users;", apiKey))
+                    .uri(
+                        aiDevsProperties.task.task0303.apiUrl
+                            .toURI(),
+                    ).body(DbRequest("select count(*) as user_count from users;", aiDevsProperties.apiKey))
                     .retrieve()
                     .body(object : ParameterizedTypeReference<DbApiResponse<JsonNode>>() {})
                     ?: throw IllegalStateException("Cannot count users")
@@ -91,8 +91,10 @@ class Task0305Service(
                     async {
                         restClient
                             .post()
-                            .uri(apiUrl)
-                            .body(DbRequest("select * from users limit 10 offset $i;", apiKey))
+                            .uri(
+                                aiDevsProperties.task.task0303.apiUrl
+                                    .toURI(),
+                            ).body(DbRequest("select * from users limit 10 offset $i;", aiDevsProperties.apiKey))
                             .retrieve()
                             .body(object : ParameterizedTypeReference<DbApiResponse<DbUser>>() {})
                             ?: throw IllegalStateException("Cannot find users")
@@ -107,8 +109,10 @@ class Task0305Service(
         val connections =
             restClient
                 .post()
-                .uri(apiUrl)
-                .body(DbRequest("select * from connections where user1_id = $userId;", apiKey))
+                .uri(
+                    aiDevsProperties.task.task0303.apiUrl
+                        .toURI(),
+                ).body(DbRequest("select * from connections where user1_id = $userId;", aiDevsProperties.apiKey))
                 .retrieve()
                 .body(object : ParameterizedTypeReference<DbApiResponse<DbConnection>>() {})
                 ?: throw IllegalStateException("Cannot find connections for user $userId")
