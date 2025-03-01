@@ -1,7 +1,7 @@
 package pl.bartek.aidevs.db.pdf
 
 import org.jetbrains.exposed.dao.id.UUIDTable
-import pl.bartek.aidevs.db.StringListToIntSetTransformer
+import pl.bartek.aidevs.db.transformers.StringListToIntSetTransformer
 
 abstract class BasePdfResourceTable(
     name: String,
