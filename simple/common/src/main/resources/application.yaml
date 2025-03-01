@@ -43,7 +43,7 @@ python:
     path: ./tools/.venv/bin
 
 aidevs:
-  cache-dir: .cache/ai-devs/
+  cache-dir: .cache/ai-devs
   api-key: ${AIDEVS_APIKEY}
   submit-flag-url: ${AIDEVS_SUBMITFLAGURL}
   task:
@@ -93,7 +93,7 @@ aidevs:
 
 logging:
   file:
-    path: ./logs
+    path: ${aidevs.cache-dir}/logs
     name: ${logging.file.path}/${spring.application.name}
   level:
     root: info

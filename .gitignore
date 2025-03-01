@@ -1,7 +1,7 @@
-.cache/ai-devs/**
+**/.cache/ai-devs/**
 .env.*
 *.log
-logs/
+
 *.gz
 HELP.md
 .gradle
