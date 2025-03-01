@@ -77,7 +77,7 @@ class Task0102Command(
             restClient
                 .post()
                 .uri(
-                    aiDevsProperties.task.task0102.conversationUrl
+                    aiDevsProperties.task.task0102.apiUrl
                         .toURI(),
                 ).body(PatrollingRobotMessage(messageId = patrollingRobotConversation.messageId, text = message))
                 .retrieve()

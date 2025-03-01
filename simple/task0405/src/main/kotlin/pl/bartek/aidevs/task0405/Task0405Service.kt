@@ -184,8 +184,7 @@ class Task0405Service(
                             {
                                 generateKeywords(it)
                             },
-                            aiDevsProperties.task.task0405.dataUrl
-                                .toString(),
+                            aiDevsProperties.task.task0405.dataUrl,
                             aiDevsApiClient,
                             terminal,
                         ),

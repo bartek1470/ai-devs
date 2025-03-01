@@ -16,21 +16,29 @@ data class AiDevsProperties(
 data class TaskProperties(
     val poligon: PoligonTask,
     val task0101: Task0101,
-    val task0102: Task0102,
-    val task0103: Task0103,
+    val task0102: ApiTask,
+    val task0103: DataTask,
     val task0104: Task0104,
-    val task0105: Task0105,
-    val task0201: BasicTask,
-    val task0203: BasicTask,
-    val task0204: BasicTask,
+    val task0105: DataTask,
+    val task0201: DataTask,
+    val task0203: DataTask,
+    val task0204: DataTask,
     val task0205: Task0205,
-    val task0301: BasicTask,
+    val task0301: DataTask,
     val task0302: Task0302,
-    val task0303: Task0303,
+    val task0303: ApiTask,
     val task0304: Task0304,
-    val task0402: Task0402,
+    val task0402: DataTask,
     val task0403: Task0403,
     val task0405: Task0405,
+)
+
+data class DataTask(
+    val dataUrl: URL,
+)
+
+data class ApiTask(
+    val apiUrl: URL,
 )
 
 data class PoligonTask(
@@ -44,25 +52,9 @@ data class Task0101(
     val password: String,
 )
 
-data class Task0102(
-    val conversationUrl: URL,
-)
-
-data class Task0103(
-    val dataUrl: URL,
-)
-
 data class Task0104(
     val fileBaseUrl: URL,
     val answerUrl: URL,
-)
-
-data class Task0105(
-    val dataUrl: URL,
-)
-
-data class BasicTask(
-    val dataUrl: URL,
 )
 
 data class Task0205(
@@ -75,17 +67,9 @@ data class Task0302(
     val dataPassword: String,
 )
 
-data class Task0303(
-    val apiUrl: URL,
-)
-
 data class Task0304(
     val dataUrl: URL,
     val apiUrl: URL,
-)
-
-data class Task0402(
-    val dataUrl: URL,
 )
 
 data class Task0403(

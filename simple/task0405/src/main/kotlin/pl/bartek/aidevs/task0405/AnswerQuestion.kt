@@ -14,6 +14,7 @@ import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedHuman
 import pl.bartek.aidevs.util.ansiFormattedSuccess
 import pl.bartek.aidevs.util.println
+import java.net.URL
 import java.util.Stack
 import java.util.function.Function
 
@@ -26,7 +27,7 @@ data class AnswerQuestionRequest(
 class AnswerQuestion(
     questions: Map<String, String>,
     private val keywordsGenerator: (String) -> Set<String>,
-    private val answerUrl: String,
+    private val answerUrl: URL,
     private val aiDevsApiClient: AiDevsApiClient,
     private val terminal: Terminal,
 ) : Function<AnswerQuestionRequest, String> {
@@ -98,7 +99,7 @@ class AnswerQuestion(
         fun createFunctionCallback(
             questions: Map<String, String>,
             keywordsGenerator: (String) -> Set<String>,
-            answerUrl: String,
+            answerUrl: URL,
             aiDevsApiClient: AiDevsApiClient,
             terminal: Terminal,
         ): FunctionCallback {
