@@ -10,6 +10,8 @@ spring:
       enabled: false
     history:
       name: ${logging.file.path}/${spring.application.name}.history.log
+    noninteractive:
+      primary-command: task 0201
   datasource:
     url: "jdbc:sqlite:${aidevs.cache-dir}/aidevs.db"
   exposed:
@@ -38,14 +40,17 @@ spring:
       username: neo4j
       password: pass
 
-python:
-  packages:
-    path: ./tools/.venv/bin
 
 aidevs:
   cache-dir: .cache/ai-devs
+  downloads-dir: ${aidevs.cache-dir}/downloads
+  tmp-dir: ${aidevs.cache-dir}/.tmp
+  pythonPackagesPath: ./tools/.venv/bin
+  ollama:
+    unload-models-before-local-whisper: true
   api-key: ${AIDEVS_APIKEY}
   submit-flag-url: ${AIDEVS_SUBMITFLAGURL}
+  report-url: ${AIDEVS_REPORTURL}
   task:
     poligon:
       data-url: ${AIDEVS_TASK_POLIGON_DATAURL}
@@ -55,7 +60,7 @@ aidevs:
       username: ${AIDEVS_TASK_0101_ROBOTSYSTEM_USERNAME}
       password: ${AIDEVS_TASK_0101_ROBOTSYSTEM_PASSWORD}
     task0102:
-      url: ${AIDEVS_TASK_0102_CONVERSATIONURL}
+      api-url: ${AIDEVS_TASK_0102_CONVERSATIONURL}
     task0103:
       data-url: ${AIDEVS_TASK_0103_DATAURL}
     task0104:
@@ -83,7 +88,7 @@ aidevs:
       data-url: ${AIDEVS_TASK_0304_DATAURL}
       api-url: ${AIDEVS_TASK_0304_APIURL}
     task0402:
-      data-url: ${AIDEVS_TASK_0401_DATA_URL}
+      data-url: ${AIDEVS_TASK_0402_DATA_URL}
     task0403:
       base-url: ${AIDEVS_TASK_0403_BASE_URL}
       questions-url: ${AIDEVS_TASK_0403_QUESTIONS_URL}

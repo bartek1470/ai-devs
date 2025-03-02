@@ -46,11 +46,11 @@ import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.db.keywords.Keywords
 import pl.bartek.aidevs.db.keywords.KeywordsTable
-import pl.bartek.aidevs.db.pdf.PdfFile
-import pl.bartek.aidevs.db.pdf.PdfFileTable
-import pl.bartek.aidevs.db.pdf.PdfImageResource
-import pl.bartek.aidevs.db.pdf.PdfTextResource
-import pl.bartek.aidevs.db.pdf.PdfTextResourceTable
+import pl.bartek.aidevs.db.resource.pdf.PdfFile
+import pl.bartek.aidevs.db.resource.pdf.PdfFileTable
+import pl.bartek.aidevs.db.resource.pdf.PdfImageResource
+import pl.bartek.aidevs.db.resource.pdf.PdfTextResource
+import pl.bartek.aidevs.db.resource.pdf.PdfTextResourceTable
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
@@ -63,7 +63,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.Executors
 import javax.imageio.ImageIO
-import kotlin.io.path.Path
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import kotlin.io.path.extension

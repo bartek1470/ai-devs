@@ -12,8 +12,8 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
 import pl.bartek.aidevs.ai.ChatService
-import pl.bartek.aidevs.ai.transcript.FileToTranscribe
 import pl.bartek.aidevs.ai.transcript.TranscriptService
+import pl.bartek.aidevs.ai.transcript.TranscriptionRequest
 import pl.bartek.aidevs.ai.transcript.WhisperLanguage
 import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
@@ -135,12 +135,9 @@ class Task0204Command(
         when (file.extension) {
             "txt" -> Stream.of(Note(file, file, MediaType.TEXT_PLAIN))
             "mp3" -> {
-                val recording =
-                    transcriptService.transcribe(
-                        FileToTranscribe(FileSystemResource(file), language = WhisperLanguage.ENGLISH),
-                        TaskId.TASK_0204,
-                    )
-                Stream.of(Note(file, recording.transcriptPath, MediaType.TEXT_PLAIN))
+                val transcription = transcriptService.transcribe(TranscriptionRequest(file, language = WhisperLanguage.ENGLISH))
+                val transcriptionPath: Path = Files.writeString(cacheDir.resolve("${file.nameWithoutExtension}.txt"), transcription)
+                Stream.of(Note(file, transcriptionPath, MediaType.TEXT_PLAIN))
             }
             "png" -> Stream.of(Note(file, file, MediaType.IMAGE_PNG))
             else -> Stream.empty()

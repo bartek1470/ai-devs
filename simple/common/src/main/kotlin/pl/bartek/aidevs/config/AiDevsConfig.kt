@@ -7,10 +7,18 @@ import java.nio.file.Path
 @ConfigurationProperties(prefix = "aidevs")
 data class AiDevsProperties(
     val cacheDir: Path,
+    val downloadsDir: Path,
+    val tmpDir: Path,
+    val pythonPackagesPath: Path,
+    val ollama: AiDevsOllamaProperties,
     val apiKey: String,
     val submitFlagUrl: URL,
     val reportUrl: URL,
     val task: TaskProperties,
+)
+
+data class AiDevsOllamaProperties(
+    val unloadModelsBeforeLocalWhisper: Boolean,
 )
 
 data class TaskProperties(

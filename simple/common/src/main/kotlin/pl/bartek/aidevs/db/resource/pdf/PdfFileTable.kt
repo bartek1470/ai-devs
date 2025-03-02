@@ -1,4 +1,4 @@
-package pl.bartek.aidevs.db.pdf
+package pl.bartek.aidevs.db.resource.pdf
 
 import org.jetbrains.exposed.dao.id.UUIDTable
 import kotlin.io.path.Path

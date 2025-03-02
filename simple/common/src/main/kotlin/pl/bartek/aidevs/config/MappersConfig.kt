@@ -19,6 +19,7 @@ class MappersConfig {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
             .configure(SerializationFeature.INDENT_OUTPUT, true)
+            .findAndAddModules()
             .build()
             .registerKotlinModule() as XmlMapper
 
@@ -29,6 +30,7 @@ class MappersConfig {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
             .configure(SerializationFeature.INDENT_OUTPUT, true)
+            .findAndAddModules()
             .build()
             .registerKotlinModule() as JsonMapper
 }

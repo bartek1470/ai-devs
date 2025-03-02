@@ -6,21 +6,24 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.apache.commons.codec.digest.DigestUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.client.ChatClient
-import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.ai.transcript.FileToTranscribe
 import pl.bartek.aidevs.ai.transcript.TranscriptService
+import pl.bartek.aidevs.ai.transcript.TranscriptionRequest
 import pl.bartek.aidevs.ai.transcript.WhisperLanguage
 import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
+import pl.bartek.aidevs.db.audio.AudioResourceTable
+import pl.bartek.aidevs.db.resource.audio.AudioResource
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
@@ -59,14 +62,9 @@ class Task0201Command(
         description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s02e01-audio-i-interfejs-glosowy",
     )
     fun run() {
-        val recordingsPath = fetchInputData()
-        val recordingPaths =
-            Files
-                .list(recordingsPath)
-                .filter { it.extension == "m4a" }
-                .map { FileToTranscribe(FileSystemResource(it), language = WhisperLanguage.POLISH) }
-                .toList()
-        val recordings = recordingPaths.map { transcriptService.transcribe(it, TaskId.TASK_0201) }
+        val recordingsDirectory = fetchInputData()
+        val recordingPaths: List<Path> = Files.list(recordingsDirectory).filter { it.extension == "m4a" }.toList()
+        val recordings = fetchAudioResources(recordingPaths)
 
         val systemPrompt =
             """
@@ -109,11 +107,10 @@ class Task0201Command(
             """.trimIndent()
 
         val recordingsWithName =
-            recordings.map { recording ->
-                val name = recording.transcriptPath.nameWithoutExtension.titleCase()
+            recordings.map { audio ->
                 """
-                |$name:
-                |${recording.transcript.removeExtraWhitespaces()}
+                |${audio.path.nameWithoutExtension.titleCase()}:
+                |${audio.transcription}
                 """.trimMargin()
             }
         val userPrompt =
@@ -142,6 +139,37 @@ class Task0201Command(
         val aiResponse = extractAnswer(response)
         val aiDevsAnswerResponse = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.MP3, aiResponse.streetName))
         terminal.println(aiDevsAnswerResponse)
+    }
+
+    private fun fetchAudioResources(recordingPaths: List<Path>): List<AudioResource> {
+        val pathsWithHash =
+            recordingPaths
+                .map { Pair(it, DigestUtils.sha256Hex(Files.readAllBytes(it))) }
+
+        val existingAudioResources =
+            transaction {
+                pathsWithHash.mapNotNull { (_, hash) ->
+                    AudioResource
+                        .find { AudioResourceTable.hash eq hash }
+                        .firstOrNull()
+                }
+            }
+
+        val newAudioResources =
+            pathsWithHash
+                .filter { existingAudioResources.none { it.path == it.path } }
+                .map { (path, hash) ->
+                    terminal.println("Transcribing $path".ansiFormattedSecondaryInfo())
+                    val transcription = transcriptService.transcribe(TranscriptionRequest(path, language = WhisperLanguage.POLISH))
+                    transaction {
+                        AudioResource.new {
+                            this.path = path
+                            this.hash = hash
+                            this.transcription = transcription.removeExtraWhitespaces().trim()
+                        }
+                    }
+                }
+        return existingAudioResources + newAudioResources
     }
 
     private fun extractAnswer(response: String): AiResponse {
@@ -177,10 +205,13 @@ class Task0201Command(
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)
         if (Files.exists(extractedZipPath)) {
-            log.info { "Input data already exists: ${extractedZipPath.toAbsolutePath()}. Skipping" }
+            val message = "Input data already exists: ${extractedZipPath.toAbsolutePath()}. Skipping"
+            log.info { message }
+            terminal.println(message.ansiFormattedSecondaryInfo())
             return extractedZipPath
         }
 
+        terminal.println("Downloading input data from ${uriComponents.toUriString()}...".ansiFormattedSecondaryInfo())
         val body =
             restClient
                 .get()

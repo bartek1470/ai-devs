@@ -1,7 +1,8 @@
-package pl.bartek.aidevs.db.pdf
+package pl.bartek.aidevs.db.resource.pdf
 
 import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.id.EntityID
+import pl.bartek.aidevs.db.pdf.BasePdfResourceTable
 import java.util.UUID
 
 abstract class BasePdfResource(

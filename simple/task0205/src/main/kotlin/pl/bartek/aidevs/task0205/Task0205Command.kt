@@ -1,5 +1,7 @@
 package pl.bartek.aidevs.task0205
 
+import org.apache.commons.codec.digest.DigestUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -11,19 +13,23 @@ import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
-import pl.bartek.aidevs.ai.transcript.FileToTranscribe
 import pl.bartek.aidevs.ai.transcript.TranscriptService
+import pl.bartek.aidevs.ai.transcript.TranscriptionRequest
 import pl.bartek.aidevs.ai.transcript.WhisperLanguage.POLISH
 import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
+import pl.bartek.aidevs.db.audio.AudioResourceTable
+import pl.bartek.aidevs.db.resource.audio.AudioResource
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
 import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
+import pl.bartek.aidevs.util.removeExtraWhitespaces
+import java.nio.file.Files
 
 @Command(
     group = "task",
@@ -37,6 +43,12 @@ class Task0205Command(
     private val chatService: ChatService,
     private val transcriptService: TranscriptService,
 ) {
+    private val cachePath = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0205.cacheFolderName())
+
+    init {
+        Files.createDirectories(cachePath)
+    }
+
     @Command(
         command = ["0205"],
         description = "https://bravecourses.circle.so/c/lekcje-programu-ai3-806660/s02e05-multimodalnosc-w-praktyce",
@@ -79,14 +91,13 @@ class Task0205Command(
         for (audio in audioElements) {
             val audioUrl =
                 audio.selectFirst("source")?.attr("abs:src") ?: throw IllegalStateException("Unable to find audio source")
-            val audioResource = UrlResource(audioUrl)
-            val recording = transcriptService.transcribe(FileToTranscribe(audioResource, language = POLISH), TaskId.TASK_0205)
+            val audioResource = fetchAudioResource(audioUrl)
             audio.replaceWith(
                 Element("p").text(
                     """
-                    |AUDIO ${audioResource.filename} TRANSCRIPTION:
+                    |AUDIO ${audioResource.path.fileName} TRANSCRIPTION:
                     |```
-                    |${recording.transcript.trim()}
+                    |${audioResource.transcription}
                     |```
                     """.trimMargin(),
                 ),
@@ -121,6 +132,32 @@ class Task0205Command(
 
         val aiDevsAnswer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.ARXIV, answers))
         terminal.println(aiDevsAnswer)
+    }
+
+    private fun fetchAudioResource(audioUrl: String): AudioResource {
+        val audioUrlResource = UrlResource(audioUrl)
+        val content = audioUrlResource.contentAsByteArray
+        val hash = DigestUtils.sha256Hex(content)
+
+        return transaction { AudioResource.find { AudioResourceTable.hash eq hash }.firstOrNull() }
+            ?: run {
+                val filename = audioUrlResource.filename ?: "$hash.mp3"
+                val audioPath = Files.write(cachePath.resolve(filename), content)
+                val transcription =
+                    transcriptService
+                        .transcribe(
+                            TranscriptionRequest(audioPath, language = POLISH),
+                        ).removeExtraWhitespaces()
+                        .trim()
+
+                transaction {
+                    AudioResource.new {
+                        this.hash = hash
+                        path = audioPath
+                        this.transcription = transcription
+                    }
+                }
+            }
     }
 
     private fun fetchInputData(): Map<String, String> {
