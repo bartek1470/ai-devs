@@ -76,6 +76,7 @@ fun String.titleCase() =
     }
 
 fun Terminal.println(str: String = "") {
+    log.debug { str }
     writer().println(str)
     flush()
 }
@@ -96,6 +97,7 @@ fun Terminal.println(answerResponse: AiDevsAnswerResponse) {
 }
 
 fun Terminal.print(str: String) {
+    log.debug { str }
     writer().print(str)
     flush()
 }
