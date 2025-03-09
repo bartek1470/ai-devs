@@ -6,6 +6,7 @@ import java.nio.file.Path
 
 @ConfigurationProperties(prefix = "aidevs")
 data class AiDevsProperties(
+    val model: ModelConfig,
     val cacheDir: Path,
     val downloadsDir: Path,
     val tmpDir: Path,
@@ -15,6 +16,10 @@ data class AiDevsProperties(
     val submitFlagUrl: URL,
     val reportUrl: URL,
     val task: TaskProperties,
+)
+
+data class ModelConfig(
+    val image: String,
 )
 
 data class AiDevsOllamaProperties(

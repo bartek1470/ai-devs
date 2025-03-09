@@ -26,6 +26,8 @@ spring:
 
 
 aidevs:
+  model:
+    image: moondream:1.8b
   image-description:
     model: moondream:1.8b
   keywords:
@@ -34,5 +36,3 @@ aidevs:
     model: ${spring.ai.ollama.chat.options.model}
   title:
     model: ${spring.ai.ollama.chat.options.model}
-  ollama:
-    unload-before-whisper: true

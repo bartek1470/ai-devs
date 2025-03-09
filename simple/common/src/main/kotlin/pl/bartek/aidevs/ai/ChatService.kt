@@ -5,8 +5,10 @@ import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.prompt.ChatOptions
+import org.springframework.ai.chat.prompt.DefaultChatOptions
 import org.springframework.ai.model.function.FunctionCallback
 import org.springframework.stereotype.Service
+import pl.bartek.aidevs.config.AiDevsProperties
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.stream.Collectors
@@ -14,8 +16,23 @@ import kotlin.io.path.exists
 
 @Service
 class ChatService(
+    private val aiDevsProperties: AiDevsProperties,
     private val chatClient: ChatClient,
 ) {
+    fun sendToChatWithImageSupport(
+        messages: List<Message>,
+        functions: List<FunctionCallback> = listOf(),
+        chatOptions: ChatOptions? = null,
+        streaming: Boolean = true,
+        cachePath: Path? = null,
+        responseReceived: (String) -> Unit = {},
+    ): String {
+        val newChatOptions: ChatOptions =
+            chatOptions?.copy<DefaultChatOptions>()?.also { it.model = aiDevsProperties.model.image }
+                ?: ChatOptions.builder().model(aiDevsProperties.model.image).build()
+        return sendToChat(messages, functions, newChatOptions, streaming, cachePath, responseReceived)
+    }
+
     fun sendToChat(
         messages: List<Message>,
         functions: List<FunctionCallback> = listOf(),
