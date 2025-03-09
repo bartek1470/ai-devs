@@ -26,7 +26,7 @@ repositories {
 
 configure<DependencyManagementExtension> {
     imports {
-        mavenBom("org.springframework.ai:spring-ai-bom:1.0.0-M5")
+        mavenBom("org.springframework.ai:spring-ai-bom:1.0.0-M6")
         mavenBom("org.springframework.shell:spring-shell-dependencies:3.3.3")
     }
 }

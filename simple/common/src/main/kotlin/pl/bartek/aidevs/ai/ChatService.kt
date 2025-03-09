@@ -62,7 +62,7 @@ class ChatService(
         return responseContent
     }
 
-    private fun ChatResponse.content(): String = result?.output?.content ?: ""
+    private fun ChatResponse.content(): String = result?.output?.text ?: ""
 
     companion object {
         private val log = KotlinLogging.logger { }

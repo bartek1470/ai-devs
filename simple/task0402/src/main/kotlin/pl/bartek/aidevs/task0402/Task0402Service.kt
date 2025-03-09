@@ -152,7 +152,7 @@ class Task0402Service(
                 .map { messagesOfSample ->
                     messagesOfSample.map {
                         ChatCompletionMessage(
-                            it.content,
+                            it.text,
                             ChatCompletionMessage.Role.valueOf(it.messageType.name),
                         )
                     }
