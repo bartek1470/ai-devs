@@ -1,0 +1,4 @@
+spring:
+  shell:
+    noninteractive:
+      primary-command: task 0103

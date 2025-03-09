@@ -10,8 +10,6 @@ spring:
       enabled: false
     history:
       name: ${logging.file.path}/${spring.application.name}.history.log
-    noninteractive:
-      primary-command: task 0201
   datasource:
     url: "jdbc:sqlite:${aidevs.cache-dir}/aidevs.db"
   exposed:
