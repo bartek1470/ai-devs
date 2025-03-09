@@ -1,12 +1,12 @@
 package pl.bartek.aidevs.task0204
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.model.Media
 import org.springframework.core.io.FileSystemResource
-import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
@@ -20,17 +20,26 @@ import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.course.api.Task
+import pl.bartek.aidevs.db.audio.AudioResourceTable
+import pl.bartek.aidevs.db.resource.BaseResource
+import pl.bartek.aidevs.db.resource.audio.AudioResource
+import pl.bartek.aidevs.db.resource.calculateContentHash
+import pl.bartek.aidevs.db.resource.image.ImageResource
+import pl.bartek.aidevs.db.resource.image.ImageResourceTable
+import pl.bartek.aidevs.db.resource.text.TextResource
+import pl.bartek.aidevs.db.resource.text.TextResourceTable
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfo
 import pl.bartek.aidevs.util.ansiFormattedSecondaryInfoTitle
 import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
+import pl.bartek.aidevs.util.resizeToFitSquare
 import pl.bartek.aidevs.util.unzip
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.stream.Stream
+import javax.imageio.ImageIO
 import kotlin.io.path.extension
+import kotlin.io.path.name
 import kotlin.io.path.nameWithoutExtension
 
 @Command(
@@ -67,40 +76,45 @@ class Task0204Command(
     )
     fun run() {
         val factoryDataPath = fetchInputData()
-//        val filesToProcess = setOf(
-//            "2024-11-12_report-10-sektor-C1.mp3",
-//            "2024-11-12_report-11-sektor-C2.mp3",
-//            "2024-11-12_report-12-sektor_A1.mp3",
-//        )
-        val preparedNotes =
+
+        val resources =
             Files
-                .list(factoryDataPath)
-                .filter { Files.isRegularFile(it) }
-                .flatMap { file: Path ->
-                    prepareFiles(file)
-                }.toList()
-//                .filter { filesToProcess.contains(it.file.fileName.toString()) }
-                .sortedBy { it.file.fileName }
+                .list(
+                    factoryDataPath,
+                ).filter { Files.isRegularFile(it) }
                 .toList()
+                .mapNotNull { file: Path -> obtainResource(file) }
+
         val notes =
-            preparedNotes
+            resources.map { resource ->
+                when (resource) {
+                    is TextResource -> Note(resource.name, resource.content)
+                    is AudioResource -> Note(resource.name, resource.transcription)
+                    is ImageResource -> Note(resource.name, resource.description)
+                    else -> throw UnsupportedOperationException("Resource type not supported for this task")
+                }
+            }
+
+        val groupedNotes =
+            notes
                 .groupBy { note ->
-                    terminal.print("AI response to ${note.file.fileName}: ".ansiFormattedAi())
+                    terminal.print("AI response to ${note.name}: ".ansiFormattedAi())
                     val content =
-                        if (note.mimeType == MediaType.IMAGE_PNG) {
-                            processImage(FileSystemResource(note.resourcePathToProcess))
-                        } else {
-                            processText(FileSystemResource(note.resourcePathToProcess))
-                        }
+                        chatService.sendToChat(
+                            listOf(
+                                SystemMessage(prompt),
+                                UserMessage(note.content),
+                            ),
+                        ) { terminal.println(it) }
                     terminal.println()
                     content
                 }.mapKeys { NoteContent.valueOf(it.key.trim().uppercase()) }
-                .mapValues { it.value.map { note -> note.file.fileName.toString() } }
+                .mapValues { it.value.map { note -> note.name } }
 
         val answer =
             NotesContent(
-                people = (notes[NoteContent.PRESENCE] ?: listOf()) + (notes[NoteContent.CAPTURE] ?: listOf()),
-                hardware = notes[NoteContent.HARDWARE] ?: listOf(),
+                people = (groupedNotes[NoteContent.PRESENCE] ?: listOf()) + (groupedNotes[NoteContent.CAPTURE] ?: listOf()),
+                hardware = groupedNotes[NoteContent.HARDWARE] ?: listOf(),
             )
 
         terminal.println("Summary:".ansiFormattedSecondaryInfoTitle())
@@ -112,36 +126,90 @@ class Task0204Command(
         terminal.println(aiDevsAnswer)
     }
 
-    private fun processImage(imageResource: Resource): String =
-        chatService.sendToChat(
-            listOf(
-                SystemMessage(prompt),
-                UserMessage(
-                    "",
-                    Media(MediaType.IMAGE_PNG, imageResource),
-                ),
-            ),
-        ) { terminal.print(it) }
-
-    private fun processText(textResource: Resource): String =
-        chatService.sendToChat(
-            listOf(
-                SystemMessage(prompt),
-                UserMessage(textResource.getContentAsString(StandardCharsets.UTF_8)),
-            ),
-        ) { terminal.println(it) }
-
-    private fun prepareFiles(file: Path): Stream<Note> =
-        when (file.extension) {
-            "txt" -> Stream.of(Note(file, file, MediaType.TEXT_PLAIN))
-            "mp3" -> {
-                val transcription = transcriptService.transcribe(TranscriptionRequest(file, language = WhisperLanguage.ENGLISH))
-                val transcriptionPath: Path = Files.writeString(cacheDir.resolve("${file.nameWithoutExtension}.txt"), transcription)
-                Stream.of(Note(file, transcriptionPath, MediaType.TEXT_PLAIN))
+    private fun obtainResource(filePath: Path): BaseResource? {
+        terminal.println("Obtaining ${filePath.name}...".ansiFormattedSecondaryInfoTitle())
+        return when (filePath.extension) {
+            "txt" -> {
+                val hash = filePath.calculateContentHash()
+                transaction {
+                    TextResource
+                        .find { TextResourceTable.hash eq hash }
+                        .singleOrNull()
+                } ?: let {
+                    terminal.println("Creating a new text resource".ansiFormattedSecondaryInfo())
+                    val content = Files.readString(filePath)
+                    transaction {
+                        TextResource.new {
+                            this.hash = hash
+                            this.name = filePath.name
+                            this.content = content
+                        }
+                    }
+                }
             }
-            "png" -> Stream.of(Note(file, file, MediaType.IMAGE_PNG))
-            else -> Stream.empty()
+            "mp3" -> {
+                val hash = filePath.calculateContentHash()
+                transaction {
+                    AudioResource
+                        .find { AudioResourceTable.hash eq hash }
+                        .singleOrNull()
+                } ?: let {
+                    terminal.println("Creating a new audio resource".ansiFormattedSecondaryInfo())
+                    val transcription =
+                        transcriptService.transcribe(TranscriptionRequest(filePath, language = WhisperLanguage.ENGLISH))
+                    transaction {
+                        AudioResource.new {
+                            this.hash = hash
+                            this.name = filePath.name
+                            path = filePath
+                            this.transcription = transcription
+                        }
+                    }
+                }
+            }
+            "png" -> {
+                val hash = filePath.calculateContentHash()
+                transaction {
+                    ImageResource
+                        .find { ImageResourceTable.hash eq hash }
+                        .singleOrNull()
+                } ?: let {
+                    terminal.println("Creating a new image resource".ansiFormattedSecondaryInfo())
+                    val bufferedImage =
+                        ImageIO
+                            .read(filePath.toFile())
+                            .resizeToFitSquare(100)
+                    val resizedImagePath = filePath.parent.resolve("${filePath.nameWithoutExtension}_resized.${filePath.extension}")
+                    ImageIO.write(bufferedImage, filePath.extension, resizedImagePath.toFile())
+                    val description =
+                        chatService.sendToChatWithImageSupport(
+                            messages =
+                                listOf(
+                                    UserMessage(
+                                        "Describe the image. Include any text that is written in the image",
+                                        Media(MediaType.IMAGE_PNG, FileSystemResource(resizedImagePath)),
+                                    ),
+                                ),
+                            streaming = false,
+                        )
+                    transaction {
+                        ImageResource.new {
+                            this.hash = hash
+                            this.name = filePath.name
+                            path = resizedImagePath
+                            originalPath = filePath
+                            this.description = description
+                        }
+                    }
+                }
+            }
+
+            else -> {
+                log.info { "$filePath is not supported resource for this task" }
+                null
+            }
         }
+    }
 
     private fun fetchInputData(): Path {
         val uriComponents =
