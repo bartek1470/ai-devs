@@ -2,9 +2,17 @@ package pl.bartek.aidevs.ai.transcript
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.annotation.PostConstruct
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Service
 import pl.bartek.aidevs.ai.OllamaManager
 import pl.bartek.aidevs.config.AiDevsProperties
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
 import java.nio.file.Files
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.nameWithoutExtension
@@ -50,11 +58,15 @@ class TranscriptService(
                         "--output_dir",
                         resultPath.parent.toAbsolutePath().toString(),
                         transcriptionRequest.path.absolutePathString(),
-                    ).redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                        .redirectError(ProcessBuilder.Redirect.INHERIT)
-                        .start()
+                    ).start()
 
-                process.waitFor()
+                val logOutputJob = useStreamUntilProcessAlive(process.inputStream, process) { whisperProcessLog.info { it } }
+                val logErrorJob = useStreamUntilProcessAlive(process.errorStream, process) { whisperProcessLog.error { it } }
+
+                runBlocking {
+                    joinAll(logOutputJob, logErrorJob)
+                    process.waitFor()
+                }
             } catch (e: Exception) {
                 log.error(e) { "Failed to execute whisper command for $transcriptionRequest" }
                 throw e
@@ -72,7 +84,23 @@ class TranscriptService(
         return resultContent
     }
 
+    private fun useStreamUntilProcessAlive(
+        inputStream: InputStream,
+        process: Process,
+        lineConsumer: (String) -> Unit,
+    ) = CoroutineScope(Dispatchers.IO).launch {
+        BufferedReader(InputStreamReader(inputStream)).use { reader ->
+            while (process.isAlive) {
+                val line = reader.readLine() ?: break
+                if (line.isNotEmpty()) {
+                    lineConsumer.invoke(line)
+                }
+            }
+        }
+    }
+
     companion object {
         private val log = KotlinLogging.logger {}
+        private val whisperProcessLog = KotlinLogging.logger("whisper")
     }
 }
