@@ -205,9 +205,9 @@ class Task0201Command(
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)
         if (Files.exists(extractedZipPath)) {
-            val message = "Input data already exists: ${extractedZipPath.toAbsolutePath()}. Skipping"
-            log.info { message }
-            terminal.println(message.ansiFormattedSecondaryInfo())
+            terminal.println(
+                "Input data already exists: ${extractedZipPath.toAbsolutePath()}. Skipping download".ansiFormattedSecondaryInfo(),
+            )
             return extractedZipPath
         }
 

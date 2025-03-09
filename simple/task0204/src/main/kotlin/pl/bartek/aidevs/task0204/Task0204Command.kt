@@ -154,10 +154,13 @@ class Task0204Command(
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)
         if (Files.exists(extractedZipPath)) {
-            log.info { "Input data already exists: ${extractedZipPath.toAbsolutePath()}. Skipping" }
+            terminal.println(
+                "Input data already exists: ${extractedZipPath.toAbsolutePath()}. Skipping download".ansiFormattedSecondaryInfo(),
+            )
             return extractedZipPath
         }
 
+        terminal.println("Downloading input data from ${uriComponents.toUriString()}...".ansiFormattedSecondaryInfo())
         val body =
             restClient
                 .get()
