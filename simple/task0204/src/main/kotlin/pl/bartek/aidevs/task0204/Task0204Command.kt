@@ -82,6 +82,7 @@ class Task0204Command(
                 .list(
                     factoryDataPath,
                 ).filter { Files.isRegularFile(it) }
+                .filter { it.nameWithoutExtension.endsWith(RESIZED_SUFFIX).not() }
                 .toList()
                 .mapNotNull { file: Path -> obtainResource(file) }
 
@@ -179,7 +180,7 @@ class Task0204Command(
                         ImageIO
                             .read(filePath.toFile())
                             .resizeToFitSquare(100)
-                    val resizedImagePath = filePath.parent.resolve("${filePath.nameWithoutExtension}_resized.${filePath.extension}")
+                    val resizedImagePath = filePath.parent.resolve("${filePath.nameWithoutExtension}_$RESIZED_SUFFIX.${filePath.extension}")
                     ImageIO.write(bufferedImage, filePath.extension, resizedImagePath.toFile())
                     val description =
                         chatService.sendToChatWithImageSupport(
@@ -246,5 +247,6 @@ class Task0204Command(
 
     companion object {
         private val log = KotlinLogging.logger { }
+        private const val RESIZED_SUFFIX = "resized"
     }
 }
