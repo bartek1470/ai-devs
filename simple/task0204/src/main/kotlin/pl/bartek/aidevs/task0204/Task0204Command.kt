@@ -106,7 +106,7 @@ class Task0204Command(
                                 SystemMessage(prompt),
                                 UserMessage(note.content),
                             ),
-                        ) { terminal.println(it) }
+                        ) { terminal.print(it) }
                     terminal.println()
                     content
                 }.mapKeys { NoteContent.valueOf(it.key.trim().uppercase()) }
