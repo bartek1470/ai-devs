@@ -33,6 +33,7 @@ private const val DATE_METADATA_KEY = "report_date"
 @Service
 class Task0302Service(
     private val aiDevsProperties: AiDevsProperties,
+    private val task0302Config: Task0302Config,
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
@@ -85,10 +86,8 @@ class Task0302Service(
     private fun fetchInputData(): Path {
         val uriComponents =
             UriComponentsBuilder
-                .fromUri(
-                    aiDevsProperties.task.task0302.dataUrl
-                        .toURI(),
-                ).build()
+                .fromUri(task0302Config.dataUrl.toURI())
+                .build()
         val filename = uriComponents.pathSegments[uriComponents.pathSegments.size - 1]!!
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)
@@ -118,8 +117,7 @@ class Task0302Service(
         Files.delete(zipFilePath)
         dataZipPath.unzip(
             extractedDataZipPath,
-            aiDevsProperties.task.task0302.dataPassword
-                .toCharArray(),
+            task0302Config.dataPassword.toCharArray(),
         )
         Files.delete(dataZipPath)
         return inputDataPath

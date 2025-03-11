@@ -22,6 +22,7 @@ import pl.bartek.aidevs.util.println
 class Task0104Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
+    private val task0104Config: Task0104Config,
     private val restClient: RestClient,
 ) {
     @Command(
@@ -53,8 +54,7 @@ class Task0104Command(
             restClient
                 .post()
                 .uri(
-                    aiDevsProperties.task.task0104.answerUrl
-                        .toURI(),
+                    task0104Config.answerUrl.toURI(),
                 ).contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(
                     LinkedMultiValueMap<String, String>().apply {
@@ -76,10 +76,8 @@ class Task0104Command(
         val filename = value["filename"]!!.textValue()
         val fileUrl =
             UriComponentsBuilder
-                .fromUri(
-                    aiDevsProperties.task.task0104.fileBaseUrl
-                        .toURI(),
-                ).pathSegment(filename)
+                .fromUri(task0104Config.fileBaseUrl.toURI())
+                .pathSegment(filename)
                 .build()
                 .toUriString()
 

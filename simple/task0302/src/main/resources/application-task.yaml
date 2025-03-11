@@ -2,3 +2,9 @@ spring:
   shell:
     noninteractive:
       primary-command: task 0302
+
+aidevs:
+  task:
+    task0302:
+      data-url: ${AIDEVS_TASK_0302_DATAURL}
+      data-password: ${AIDEVS_TASK_0302_DATAPASSWORD}

@@ -38,6 +38,7 @@ import java.nio.file.Files
 class Task0205Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
+    private val task0205Config: Task0205Config,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatService: ChatService,
@@ -57,12 +58,7 @@ class Task0205Command(
         val questions = fetchInputData()
         terminal.println("Pytania:".ansiFormattedSecondaryInfoTitle())
         terminal.println(questions.entries.joinToString("\n").ansiFormattedSecondaryInfo())
-        val article =
-            Jsoup
-                .connect(
-                    aiDevsProperties.task.task0205.articleUrl
-                        .toString(),
-                ).get()
+        val article = Jsoup.connect(task0205Config.articleUrl.toString()).get()
 
         val figureElements = article.body().select("figure")
         for (figure in figureElements) {
@@ -164,11 +160,8 @@ class Task0205Command(
         val body =
             restClient
                 .get()
-                .uri(
-                    aiDevsProperties.task.task0205.dataUrl
-                        .toString(),
-                    aiDevsProperties.apiKey,
-                ).retrieve()
+                .uri(task0205Config.dataUrl.toString(), aiDevsProperties.apiKey)
+                .retrieve()
                 .body(String::class.java) ?: throw IllegalStateException("Missing body")
 
         return body

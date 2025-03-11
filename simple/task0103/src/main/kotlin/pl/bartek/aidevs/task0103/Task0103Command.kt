@@ -17,6 +17,7 @@ import pl.bartek.aidevs.util.println
 class Task0103Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
+    private val task0103Config: Task0103Config,
     private val chatClient: ChatClient,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
@@ -69,8 +70,7 @@ class Task0103Command(
         restClient
             .get()
             .uri(
-                aiDevsProperties.task.task0103.dataUrl
-                    .toString(),
+                task0103Config.dataUrl.toString(),
                 aiDevsProperties.apiKey,
             ).retrieve()
             .body(IndustrialRobotCalibrationFile::class.java) ?: throw IllegalStateException("Cannot get data to process")

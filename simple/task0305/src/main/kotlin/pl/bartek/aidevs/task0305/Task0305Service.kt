@@ -24,6 +24,7 @@ import kotlin.jvm.optionals.getOrNull
 @Service
 class Task0305Service(
     private val aiDevsProperties: AiDevsProperties,
+    private val task0305Config: Task0305Config,
     private val restClient: RestClient,
     private val userRepository: UserRepository,
     private val aiDevsApiClient: AiDevsApiClient,
@@ -77,8 +78,7 @@ class Task0305Service(
                 restClient
                     .post()
                     .uri(
-                        aiDevsProperties.task.task0303.apiUrl
-                            .toURI(),
+                        task0305Config.apiUrl.toURI(),
                     ).body(DbRequest("select count(*) as user_count from users;", aiDevsProperties.apiKey))
                     .retrieve()
                     .body(object : ParameterizedTypeReference<DbApiResponse<JsonNode>>() {})
@@ -92,8 +92,7 @@ class Task0305Service(
                         restClient
                             .post()
                             .uri(
-                                aiDevsProperties.task.task0303.apiUrl
-                                    .toURI(),
+                                task0305Config.apiUrl.toURI(),
                             ).body(DbRequest("select * from users limit 10 offset $i;", aiDevsProperties.apiKey))
                             .retrieve()
                             .body(object : ParameterizedTypeReference<DbApiResponse<DbUser>>() {})
@@ -110,8 +109,7 @@ class Task0305Service(
             restClient
                 .post()
                 .uri(
-                    aiDevsProperties.task.task0303.apiUrl
-                        .toURI(),
+                    task0305Config.apiUrl.toURI(),
                 ).body(DbRequest("select * from connections where user1_id = $userId;", aiDevsProperties.apiKey))
                 .retrieve()
                 .body(object : ParameterizedTypeReference<DbApiResponse<DbConnection>>() {})

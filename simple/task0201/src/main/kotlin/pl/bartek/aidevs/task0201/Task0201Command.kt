@@ -46,6 +46,7 @@ import kotlin.io.path.nameWithoutExtension
 class Task0201Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
+    private val task0201Config: Task0201Config,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatClient: ChatClient,
@@ -195,12 +196,7 @@ class Task0201Command(
     }
 
     private fun fetchInputData(): Path {
-        val uriComponents =
-            UriComponentsBuilder
-                .fromUri(
-                    aiDevsProperties.task.task0201.dataUrl
-                        .toURI(),
-                ).build()
+        val uriComponents = UriComponentsBuilder.fromUri(task0201Config.dataUrl.toURI()).build()
         val filename = uriComponents.pathSegments[uriComponents.pathSegments.size - 1]!!
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)

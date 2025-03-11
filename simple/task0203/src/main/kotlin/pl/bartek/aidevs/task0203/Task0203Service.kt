@@ -19,6 +19,7 @@ import pl.bartek.aidevs.util.println
 @Service
 class Task0203Service(
     private val aiDevsProperties: AiDevsProperties,
+    private val task0203Config: Task0203Config,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val openAiImageModel: OpenAiImageModel,
@@ -49,8 +50,7 @@ class Task0203Service(
         restClient
             .post()
             .uri(
-                aiDevsProperties.task.task0203.dataUrl
-                    .toString(),
+                task0203Config.dataUrl.toString(),
                 aiDevsProperties.apiKey,
             ).retrieve()
             .body(TaskData::class.java) ?: throw IllegalStateException("Cannot get input data")

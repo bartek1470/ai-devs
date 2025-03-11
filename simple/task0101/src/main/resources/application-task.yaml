@@ -2,3 +2,10 @@ spring:
   shell:
     noninteractive:
       primary-command: task 0101
+
+aidevs:
+  task:
+    task0101:
+      url: ${AIDEVS_TASK_0101_ROBOTSYSTEM_URL}
+      username: ${AIDEVS_TASK_0101_ROBOTSYSTEM_USERNAME}
+      password: ${AIDEVS_TASK_0101_ROBOTSYSTEM_PASSWORD}

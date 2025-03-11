@@ -2,3 +2,8 @@ spring:
   shell:
     noninteractive:
       primary-command: task 0102
+
+aidevs:
+  task:
+    task0102:
+      api-url: ${AIDEVS_TASK_0102_CONVERSATIONURL}

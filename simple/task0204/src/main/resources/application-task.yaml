@@ -2,3 +2,9 @@ spring:
   shell:
     noninteractive:
       primary-command: task 0204
+
+aidevs:
+  task:
+    task0204:
+      data-url: ${AIDEVS_TASK_0204_DATAURL}
+      max-image-dimensions:

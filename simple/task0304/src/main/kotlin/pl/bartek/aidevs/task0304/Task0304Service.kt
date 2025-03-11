@@ -36,6 +36,7 @@ import kotlin.io.path.writeText
 @Service
 class Task0304Service(
     private val aiDevsProperties: AiDevsProperties,
+    private val task0304Config: Task0304Config,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatService: ChatService,
@@ -112,8 +113,7 @@ class Task0304Service(
                             SendAskApiRequest(
                                 aiDevsProperties.apiKey,
                                 restClient,
-                                aiDevsProperties.task.task0304.apiUrl
-                                    .toString(),
+                                task0304Config.apiUrl.toString(),
                                 "people",
                             ) {
                                 terminal.println()
@@ -138,8 +138,7 @@ class Task0304Service(
                             SendAskApiRequest(
                                 aiDevsProperties.apiKey,
                                 restClient,
-                                aiDevsProperties.task.task0304.apiUrl
-                                    .toString(),
+                                task0304Config.apiUrl.toString(),
                                 "places",
                             ) {
                                 terminal.println()
@@ -238,10 +237,8 @@ class Task0304Service(
         val text =
             restClient
                 .get()
-                .uri(
-                    aiDevsProperties.task.task0304.dataUrl
-                        .toURI(),
-                ).retrieve()
+                .uri(task0304Config.dataUrl.toURI())
+                .retrieve()
                 .body(String::class.java)!!
         cachedDataPath.writeText(text)
         return text

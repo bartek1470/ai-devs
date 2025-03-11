@@ -26,6 +26,7 @@ import pl.bartek.aidevs.util.removeExtraWhitespaces
 class Task0101Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
+    private val task0101Config: Task0101Config,
     private val restClient: RestClient,
     private val chatClient: ChatClient,
 ) {
@@ -65,7 +66,7 @@ class Task0101Command(
         val location = response.headers["location"]?.first()!!
         val newLink =
             UriComponentsBuilder
-                .fromHttpUrl(aiDevsProperties.task.task0101.url)
+                .fromHttpUrl(task0101Config.url)
                 .pathSegment(location)
                 .build()
                 .toUriString()
@@ -86,13 +87,13 @@ class Task0101Command(
         val response =
             restClient
                 .post()
-                .uri(aiDevsProperties.task.task0101.url)
+                .uri(task0101Config.url)
                 .accept(MediaType.ALL)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(
                     LinkedMultiValueMap<String, String>().apply {
-                        add("username", aiDevsProperties.task.task0101.username)
-                        add("password", aiDevsProperties.task.task0101.password)
+                        add("username", task0101Config.username)
+                        add("password", task0101Config.password)
                         add("answer", answer)
                     },
                 ).retrieve()
@@ -126,7 +127,7 @@ class Task0101Command(
     }
 
     private fun findQuestion(): String {
-        val robotSystemPage = Jsoup.connect(aiDevsProperties.task.task0101.url).get()
+        val robotSystemPage = Jsoup.connect(task0101Config.url).get()
         val question = robotSystemPage.select("#human-question").text()
         terminal.println(question)
         return question

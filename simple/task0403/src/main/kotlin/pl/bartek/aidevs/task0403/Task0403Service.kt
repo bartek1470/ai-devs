@@ -30,6 +30,7 @@ import kotlin.io.path.absolute
 @Service
 class Task0403Service(
     private val aiDevsProperties: AiDevsProperties,
+    private val task0403Config: Task0403Config,
     @Value("\${python.packages.path}") pythonPackagesPath: Path,
     private val restClient: RestClient,
     private val chatService: ChatService,
@@ -47,8 +48,7 @@ class Task0403Service(
         val sitesTempDir = Files.createTempDirectory(this.cacheDir, "sites")
         val visitSiteAction =
             VisitSiteAction(
-                aiDevsProperties.task.task0403.baseUrl
-                    .toString(),
+                task0403Config.baseUrl.toString(),
                 sitesTempDir,
             ) { htmlPath -> markitdownExecPath.executeCommand(htmlPath.toString()) }
 
@@ -107,10 +107,7 @@ class Task0403Service(
     private fun fetchQuestions(): Map<String, String> =
         restClient
             .get()
-            .uri(
-                aiDevsProperties.task.task0403.questionsUrl
-                    .toString(),
-                aiDevsProperties.apiKey,
-            ).retrieve()
+            .uri(task0403Config.questionsUrl.toString(), aiDevsProperties.apiKey)
+            .retrieve()
             .body(object : ParameterizedTypeReference<Map<String, String>>() {}) ?: throw IllegalStateException("Missing body")
 }

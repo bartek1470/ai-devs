@@ -38,6 +38,7 @@ import kotlin.io.path.readText
 class Task0301Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
+    private val task0301Config: Task0301Config,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatService: ChatService,
@@ -145,12 +146,7 @@ class Task0301Command(
     }
 
     private fun fetchInputData(): Path {
-        val uriComponents =
-            UriComponentsBuilder
-                .fromUri(
-                    aiDevsProperties.task.task0301.dataUrl
-                        .toURI(),
-                ).build()
+        val uriComponents = UriComponentsBuilder.fromUri(task0301Config.dataUrl.toURI()).build()
         val filename = uriComponents.pathSegments[uriComponents.pathSegments.size - 1]!!
         val zipFilePath = this.cacheDir.resolve(filename)
         val extractedZipPath = this.cacheDir.resolve(zipFilePath.nameWithoutExtension)

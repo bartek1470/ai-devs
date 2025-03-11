@@ -1,7 +1,6 @@
 package pl.bartek.aidevs.task0402
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.autoconfigure.openai.OpenAiConnectionProperties
 import org.springframework.ai.chat.messages.AssistantMessage
@@ -43,6 +42,7 @@ private const val SYSTEM_MESSAGE_CONTENT = "Is this sample correct? Answer true 
 @Service
 class Task0402Service(
     private val aiDevsProperties: AiDevsProperties,
+    private val task0402Config: Task0402Config,
     openAiConnectionProperties: OpenAiConnectionProperties,
     private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
@@ -66,8 +66,7 @@ class Task0402Service(
     fun startFineTuning(terminal: Terminal) {
         val dataPath =
             fetchData(
-                aiDevsProperties.task.task0402.dataUrl
-                    .toString(),
+                task0402Config.dataUrl.toString(),
                 restClient,
                 cacheDir,
             )
@@ -169,8 +168,7 @@ class Task0402Service(
     ) {
         val dataPath =
             fetchData(
-                aiDevsProperties.task.task0402.dataUrl
-                    .toString(),
+                task0402Config.dataUrl.toString(),
                 restClient,
                 cacheDir,
             )
@@ -211,9 +209,5 @@ class Task0402Service(
                 .map { it.first }
         val answer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.RESEARCH, correctResults))
         terminal.println(answer)
-    }
-
-    companion object {
-        private val log = KotlinLogging.logger { }
     }
 }

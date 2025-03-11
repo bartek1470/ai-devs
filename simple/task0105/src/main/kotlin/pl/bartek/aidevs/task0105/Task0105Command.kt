@@ -25,6 +25,7 @@ import java.util.stream.Collectors
 class Task0105Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
+    private val task0105Config: Task0105Config,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
     private val chatClient: ChatClient,
@@ -102,8 +103,7 @@ class Task0105Command(
         restClient
             .get()
             .uri(
-                aiDevsProperties.task.task0105.dataUrl
-                    .toString(),
+                task0105Config.dataUrl.toString(),
                 aiDevsProperties.apiKey,
             ).retrieve()
             .body(String::class.java) ?: throw IllegalStateException("Cannot get data to process")

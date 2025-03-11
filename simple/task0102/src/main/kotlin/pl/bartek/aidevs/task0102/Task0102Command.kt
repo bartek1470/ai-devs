@@ -22,6 +22,7 @@ import pl.bartek.aidevs.util.println
 class Task0102Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
+    private val task0102Config: Task0102Config,
     private val restClient: RestClient,
     private val chatClient: ChatClient,
 ) {
@@ -77,8 +78,7 @@ class Task0102Command(
             restClient
                 .post()
                 .uri(
-                    aiDevsProperties.task.task0102.apiUrl
-                        .toURI(),
+                    task0102Config.apiUrl.toURI(),
                 ).body(PatrollingRobotMessage(messageId = patrollingRobotConversation.messageId, text = message))
                 .retrieve()
                 .body<PatrollingRobotMessage>() ?: throw IllegalStateException("No response provided")

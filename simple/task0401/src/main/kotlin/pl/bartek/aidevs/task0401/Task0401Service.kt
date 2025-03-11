@@ -103,7 +103,8 @@ class Task0401Service(
                                         }
                                     if (currentImageOperations >= maxImageOperations) {
                                         history.add("ERROR -> $operation".ansiFormattedError())
-                                        val errorMessage = "ERROR: Exceeded maximum operations! Tool cannot be invoked anymore."
+                                        val errorMessage =
+                                            "ERROR: Exceeded maximum operations! Tool cannot be invoked anymore."
                                         log.error { errorMessage }
                                         return errorMessage
                                     }
@@ -140,7 +141,9 @@ class Task0401Service(
                                     return "$messagePrefix: ${response.message}"
                                 },
                             ).description(
-                                "Executes an operation and returns information about next images if there are next images. The information might not include URLs to images but an instruction how to get the URLs.",
+                                "Executes an operation and returns information about next images if there are next " +
+                                    "images. The information might not include URLs to images but an instruction " +
+                                    "how to get the URLs.",
                             ).inputType(ImageOperationRequest::class.java)
                             .build(),
                         DefaultFunctionCallbackBuilder()
@@ -164,9 +167,8 @@ class Task0401Service(
                                                 messages =
                                                     listOf(
                                                         UserMessage(
-                                                            """
-                                                            Describe what is in the image. If needed suggest to apply one of the operations to fix an image: $availableRepeatableOperations
-                                                            """.trimIndent(),
+                                                            "Describe what is in the image. If needed suggest to apply " +
+                                                                "one of the operations to fix an image: $availableRepeatableOperations",
                                                             Media(
                                                                 MediaType.IMAGE_PNG,
                                                                 FileSystemResource(imagePath),

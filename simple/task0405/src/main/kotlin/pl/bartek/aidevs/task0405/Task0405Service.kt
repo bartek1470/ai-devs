@@ -79,6 +79,7 @@ private const val SMALL_IMAGE_SUFFIX = "_small"
 @Service
 class Task0405Service(
     private val aiDevsProperties: AiDevsProperties,
+    private val task0405Config: Task0405Config,
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
     @Value("\${aidevs.image-description.model}") private val imageDescriptionModel: String,
     private val restClient: RestClient,
@@ -98,11 +99,10 @@ class Task0405Service(
     }
 
     fun run(terminal: Terminal) {
-        terminal.println("Downloading pdf file from ${aiDevsProperties.task.task0405.dataUrl}".ansiFormattedSecondaryInfo())
+        terminal.println("Downloading pdf file from ${task0405Config.dataUrl}".ansiFormattedSecondaryInfo())
         val pdfPath =
             restClient.downloadFile(
-                aiDevsProperties.task.task0405.dataUrl
-                    .toString(),
+                task0405Config.dataUrl.toString(),
                 aiDevsProperties.apiKey,
                 cacheDir,
             )
@@ -183,7 +183,7 @@ class Task0405Service(
                             {
                                 generateKeywords(it)
                             },
-                            aiDevsProperties.task.task0405.dataUrl,
+                            task0405Config.dataUrl,
                             aiDevsApiClient,
                             terminal,
                         ),
@@ -612,8 +612,7 @@ class Task0405Service(
         restClient
             .get()
             .uri(
-                aiDevsProperties.task.task0405.questionsUrl
-                    .toString(),
+                task0405Config.questionsUrl.toString(),
                 aiDevsProperties.apiKey,
             ).retrieve()
             .body(object : ParameterizedTypeReference<Map<String, String>>() {})

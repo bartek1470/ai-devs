@@ -1,6 +1,5 @@
 package pl.bartek.aidevs.task0303
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
@@ -21,6 +20,7 @@ import java.nio.file.Files
 @Service
 class Task0303Service(
     private val aiDevsProperties: AiDevsProperties,
+    private val task0303Config: Task0303Config,
     private val restClient: RestClient,
     private val aiDevsApiClient: AiDevsApiClient,
     private val chatService: ChatService,
@@ -64,8 +64,7 @@ class Task0303Service(
                             "sendDbApiRequest",
                             SendDbApiRequest(
                                 aiDevsProperties.apiKey,
-                                aiDevsProperties.task.task0303.apiUrl
-                                    .toString(),
+                                task0303Config.apiUrl.toString(),
                                 restClient,
                             ),
                         ).description("Execute database query")
@@ -90,9 +89,5 @@ class Task0303Service(
             ids.map { it.toLong() }
         val answer = aiDevsApiClient.sendAnswer(aiDevsProperties.reportUrl, AiDevsAnswer(Task.DATABASE, datacenterIds))
         terminal.println(answer)
-    }
-
-    companion object {
-        private val log = KotlinLogging.logger { }
     }
 }
