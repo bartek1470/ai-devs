@@ -3,7 +3,7 @@ package pl.bartek.aidevs.task0303
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
+import org.springframework.ai.tool.function.FunctionToolCallback
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import pl.bartek.aidevs.ai.ChatService
@@ -59,8 +59,8 @@ class Task0303Service(
                     ),
                 ),
                 listOf(
-                    DefaultFunctionCallbackBuilder()
-                        .function(
+                    FunctionToolCallback
+                        .builder(
                             "sendDbApiRequest",
                             SendDbApiRequest(
                                 aiDevsProperties.apiKey,

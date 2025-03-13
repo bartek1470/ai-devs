@@ -4,7 +4,8 @@ import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import org.jline.terminal.Terminal
 import org.springframework.ai.document.Document
-import org.springframework.ai.model.function.FunctionCallback
+import org.springframework.ai.tool.ToolCallback
+import org.springframework.ai.tool.function.FunctionToolCallback
 import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder
@@ -66,11 +67,10 @@ class FetchContext(
             keywordsGenerator: (String) -> Set<String>,
             vectorStore: VectorStore,
             terminal: Terminal,
-        ): FunctionCallback {
+        ): ToolCallback {
             val tool = FetchContext(keywordsGenerator, vectorStore, terminal)
-            return FunctionCallback
-                .builder()
-                .function("fetchContext", tool)
+            return FunctionToolCallback
+                .builder("fetchContext", tool)
                 .description("Fetches context information about the given question")
                 .inputType(FetchContextRequest::class.java)
                 .build()

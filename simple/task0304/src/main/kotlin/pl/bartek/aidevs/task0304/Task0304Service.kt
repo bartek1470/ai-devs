@@ -7,9 +7,9 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
-import org.springframework.ai.model.function.FunctionCallingOptions
+import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.openai.api.OpenAiApi.ChatModel
+import org.springframework.ai.tool.function.FunctionToolCallback
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
 import org.springframework.boot.ansi.AnsiColor.YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
@@ -107,8 +107,8 @@ class Task0304Service(
                     ),
                 ),
                 listOf(
-                    DefaultFunctionCallbackBuilder()
-                        .function(
+                    FunctionToolCallback
+                        .builder(
                             "people",
                             SendAskApiRequest(
                                 aiDevsProperties.apiKey,
@@ -132,8 +132,8 @@ class Task0304Service(
                             """.trimIndent(),
                         ).inputType(AskApiQuery::class.java)
                         .build(),
-                    DefaultFunctionCallbackBuilder()
-                        .function(
+                    FunctionToolCallback
+                        .builder(
                             "places",
                             SendAskApiRequest(
                                 aiDevsProperties.apiKey,
@@ -159,7 +159,7 @@ class Task0304Service(
                         .build(),
                 ),
                 chatOptions =
-                    FunctionCallingOptions
+                    ChatOptions
                         .builder()
                         .temperature(0.5)
                         .model(ChatModel.GPT_4_O.value)
@@ -217,7 +217,7 @@ class Task0304Service(
                     ),
                 ),
                 chatOptions =
-                    FunctionCallingOptions
+                    ChatOptions
                         .builder()
                         .temperature(0.0)
                         .model(ChatModel.GPT_4_O.value)

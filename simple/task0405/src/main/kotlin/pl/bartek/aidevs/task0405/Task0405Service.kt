@@ -176,7 +176,7 @@ class Task0405Service(
                         """.trimMargin(),
                     ),
                 ),
-                functions =
+                tools =
                     listOf(
                         AnswerQuestion.createFunctionCallback(
                             questions,

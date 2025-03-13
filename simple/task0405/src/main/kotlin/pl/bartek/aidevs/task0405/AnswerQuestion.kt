@@ -2,9 +2,9 @@ package pl.bartek.aidevs.task0405
 
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
-import org.springframework.ai.model.function.FunctionCallback
+import org.springframework.ai.tool.ToolCallback
+import org.springframework.ai.tool.function.FunctionToolCallback
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsAnswerResponse
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -93,7 +93,6 @@ class AnswerQuestion(
     }
 
     companion object {
-        private val log = KotlinLogging.logger { }
         private const val MAX_ATTEMPTS = 5
 
         fun createFunctionCallback(
@@ -102,11 +101,10 @@ class AnswerQuestion(
             answerUrl: URL,
             aiDevsApiClient: AiDevsApiClient,
             terminal: Terminal,
-        ): FunctionCallback {
+        ): ToolCallback {
             val tool = AnswerQuestion(questions, keywordsGenerator, answerUrl, aiDevsApiClient, terminal)
-            return FunctionCallback
-                .builder()
-                .function("answerQuestion", tool)
+            return FunctionToolCallback
+                .builder("answerQuestion", tool)
                 .description("Try to answer the question")
                 .build()
         }

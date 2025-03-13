@@ -9,10 +9,10 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.model.Media
-import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
-import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.openai.api.OpenAiApi
+import org.springframework.ai.tool.function.FunctionToolCallback
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.core.io.FileSystemResource
@@ -89,10 +89,10 @@ class Task0401Service(
                             """.trimIndent(),
                         ),
                     ),
-                functions =
+                tools =
                     listOf(
-                        DefaultFunctionCallbackBuilder()
-                            .function(
+                        FunctionToolCallback
+                            .builder(
                                 "imageOperation",
                                 fun(request: ImageOperationRequest): String {
                                     val operation =
@@ -146,8 +146,8 @@ class Task0401Service(
                                     "how to get the URLs.",
                             ).inputType(ImageOperationRequest::class.java)
                             .build(),
-                        DefaultFunctionCallbackBuilder()
-                            .function(
+                        FunctionToolCallback
+                            .builder(
                                 "describeImage",
                                 fun(request: DescribeImageRequest): String {
                                     if (currentDescribeImageOperations >= maxDescribeImageOperations) {
@@ -176,7 +176,7 @@ class Task0401Service(
                                                         ),
                                                     ),
                                                 chatOptions =
-                                                    FunctionCallingOptions
+                                                    ChatOptions
                                                         .builder()
                                                         .model(OpenAiApi.ChatModel.GPT_4_O.value)
                                                         .temperature(1.0)
@@ -202,7 +202,7 @@ class Task0401Service(
                             .build(),
                     ),
                 chatOptions =
-                    FunctionCallingOptions
+                    ChatOptions
                         .builder()
                         .temperature(0.7)
                         .model(OpenAiApi.ChatModel.GPT_4_O.value)

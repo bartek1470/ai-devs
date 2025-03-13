@@ -3,8 +3,8 @@ package pl.bartek.aidevs.task0403
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.model.function.DefaultFunctionCallbackBuilder
-import org.springframework.ai.model.function.FunctionCallingOptions
+import org.springframework.ai.chat.prompt.ChatOptions
+import org.springframework.ai.tool.function.FunctionToolCallback
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
@@ -24,7 +24,6 @@ import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.Path
 import kotlin.io.path.absolute
 
 @Service
@@ -79,10 +78,10 @@ class Task0403Service(
                                 ),
                                 UserMessage(question),
                             ),
-                        functions =
+                        tools =
                             listOf(
-                                DefaultFunctionCallbackBuilder()
-                                    .function(
+                                FunctionToolCallback
+                                    .builder(
                                         "visitSite",
                                         visitSiteAction,
                                     ).description("Visits a website specified by a relative URL and returns it in markdown format")
@@ -90,7 +89,7 @@ class Task0403Service(
                                     .build(),
                             ),
                         chatOptions =
-                            FunctionCallingOptions
+                            ChatOptions
                                 .builder()
                                 .temperature(0.0)
                                 .build(),
