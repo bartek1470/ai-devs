@@ -8,7 +8,6 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.ChatOptions
-import org.springframework.ai.openai.api.OpenAiApi.ChatModel
 import org.springframework.ai.tool.function.FunctionToolCallback
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
 import org.springframework.boot.ansi.AnsiColor.YELLOW
@@ -162,7 +161,6 @@ class Task0304Service(
                     ChatOptions
                         .builder()
                         .temperature(0.5)
-                        .model(ChatModel.GPT_4_O.value)
                         .build(),
             )
 
@@ -220,7 +218,6 @@ class Task0304Service(
                     ChatOptions
                         .builder()
                         .temperature(0.0)
-                        .model(ChatModel.GPT_4_O.value)
                         .build(),
             )
 

@@ -6,5 +6,5 @@ spring:
 aidevs:
   task:
     task0204:
-      data-url: ${AIDEVS_TASK_0204_DATAURL}
+      data-url: ${AIDEVS_TASK_0204_DATA_URL}
       max-image-dimensions:

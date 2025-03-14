@@ -6,5 +6,5 @@ spring:
 aidevs:
   task:
     task0302:
-      data-url: ${AIDEVS_TASK_0302_DATAURL}
-      data-password: ${AIDEVS_TASK_0302_DATAPASSWORD}
+      data-url: ${AIDEVS_TASK_0302_DATA_URL}
+      data-password: ${AIDEVS_TASK_0302_DATA_PASSWORD}

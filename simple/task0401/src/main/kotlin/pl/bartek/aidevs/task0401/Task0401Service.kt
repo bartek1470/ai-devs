@@ -11,7 +11,6 @@ import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.model.Media
-import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.ai.tool.function.FunctionToolCallback
 import org.springframework.boot.ansi.AnsiColor.BRIGHT_YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
@@ -178,7 +177,6 @@ class Task0401Service(
                                                 chatOptions =
                                                     ChatOptions
                                                         .builder()
-                                                        .model(OpenAiApi.ChatModel.GPT_4_O.value)
                                                         .temperature(1.0)
                                                         .build(),
                                                 // has to be non-reactive because it's in a tool invocation and having
@@ -205,7 +203,6 @@ class Task0401Service(
                     ChatOptions
                         .builder()
                         .temperature(0.7)
-                        .model(OpenAiApi.ChatModel.GPT_4_O.value)
                         .build(),
                 cachePath = cacheDir.resolve("images-to-process.txt"),
             ) {

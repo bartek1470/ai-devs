@@ -6,6 +6,6 @@ spring:
 aidevs:
   task:
     task0101:
-      url: ${AIDEVS_TASK_0101_ROBOTSYSTEM_URL}
-      username: ${AIDEVS_TASK_0101_ROBOTSYSTEM_USERNAME}
-      password: ${AIDEVS_TASK_0101_ROBOTSYSTEM_PASSWORD}
+      url: ${AIDEVS_TASK_0101_URL}
+      username: ${AIDEVS_TASK_0101_USERNAME}
+      password: ${AIDEVS_TASK_0101_PASSWORD}

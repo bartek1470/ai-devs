@@ -2,3 +2,9 @@ spring:
   shell:
     noninteractive:
       primary-command: task poligon
+
+aidevs:
+  task:
+    poligon:
+      answer-url: ${AIDEVS_TASK_POLIGON_ANSWER_URL}
+      data-url: ${AIDEVS_TASK_POLIGON_DATA_URL}

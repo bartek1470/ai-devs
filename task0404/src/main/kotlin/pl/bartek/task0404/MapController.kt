@@ -11,8 +11,7 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.model.ChatModel
-import org.springframework.ai.model.function.FunctionCallingOptionsBuilder.PortableFunctionCallingOptions
-import org.springframework.ai.openai.api.OpenAiApi
+import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatusCode
 import org.springframework.web.bind.annotation.PostMapping
@@ -145,10 +144,9 @@ class MapController(
                     ),
                     UserMessage(request.instruction),
                 ).options(
-                    PortableFunctionCallingOptions
+                    FunctionCallingOptions
                         .builder()
-                        .withModel(OpenAiApi.ChatModel.GPT_4.value)
-                        .withTemperature(0.45)
+                        .temperature(0.45)
                         .build(),
                 ).call()
                 .content() ?: throw IllegalStateException("No chat response")

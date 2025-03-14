@@ -6,4 +6,4 @@ spring:
 aidevs:
   task:
     task0103:
-      data-url: ${AIDEVS_TASK_0103_DATAURL}
+      data-url: ${AIDEVS_TASK_0103_DATA_URL}

@@ -6,5 +6,5 @@ spring:
 aidevs:
   task:
     task0104:
-      file-base-url: ${AIDEVS_TASK_0104_FILEBASEURL}
-      answer-url: ${AIDEVS_TASK_0104_ANSWERURL}
+      file-base-url: ${AIDEVS_TASK_0104_FILE_BASE_URL}
+      answer-url: ${AIDEVS_TASK_0104_ANSWER_URL}

@@ -6,4 +6,4 @@ spring:
 aidevs:
   task:
     task0102:
-      api-url: ${AIDEVS_TASK_0102_CONVERSATIONURL}
+      api-url: ${AIDEVS_TASK_0102_API_URL}

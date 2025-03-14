@@ -9,8 +9,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.chat.prompt.ChatOptions
-import org.springframework.ai.openai.api.OpenAiApi.ChatModel
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
@@ -116,7 +114,6 @@ class Task0301Command(
                                     """.trimMargin(),
                                 ),
                             ),
-                            chatOptions = ChatOptions.builder().model(ChatModel.GPT_4_O.value).build(),
                         ) { terminal.print(it) }
                     terminal.println()
                     terminal.println()

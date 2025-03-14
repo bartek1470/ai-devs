@@ -20,9 +20,9 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.document.Document
 import org.springframework.ai.model.Media
-import org.springframework.ai.model.function.FunctionCallingOptions
 import org.springframework.ai.reader.ExtractedTextFormatter
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
@@ -495,7 +495,7 @@ class Task0405Service(
                     ),
                     streaming = false,
                     chatOptions =
-                        FunctionCallingOptions
+                        ChatOptions
                             .builder()
                             .temperature(0.0)
                             .model(imageDescriptionModel)
