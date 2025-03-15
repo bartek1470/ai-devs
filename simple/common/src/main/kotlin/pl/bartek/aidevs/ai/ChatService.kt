@@ -52,7 +52,7 @@ class ChatService(
             chatClient
                 .prompt()
                 .messages(messages)
-                .functions<Any, Any>(*tools.toTypedArray())
+                .tools(*tools.toTypedArray())
 
         chatOptions?.also { chatRequestSpec.options(it) }
 
