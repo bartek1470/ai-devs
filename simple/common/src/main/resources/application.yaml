@@ -43,7 +43,6 @@ aidevs:
   cache-dir: .cache/ai-devs
   downloads-dir: ${aidevs.cache-dir}/downloads
   tmp-dir: ${aidevs.cache-dir}/.tmp
-  pythonPackagesPath: ./tools/.venv/bin
   ollama:
     unload-models-before-local-whisper: true
   api-key: ${AIDEVS_APIKEY}

@@ -166,3 +166,32 @@ fun BufferedImage.resizeToFitSquare(sideSize: Int): BufferedImage {
     resizedBufferedImage.graphics.drawImage(resizedImage, 0, 0, null)
     return resizedBufferedImage
 }
+
+fun logCommandInfo(
+    command: String,
+    versionArgs: Array<String>? = null,
+) {
+    if (!log.isTraceEnabled()) {
+        return
+    }
+
+    val whichProcess = ProcessBuilder("which", command).start()
+    if (whichProcess.waitFor() != 0) {
+        log.error { "Command '$command' not found" }
+        return
+    }
+
+    val commandPath = String(whichProcess.inputStream.readAllBytes()).trim()
+    log.trace { "Command '$command' located at $commandPath" }
+
+    versionArgs?.let {
+        ProcessBuilder(command, *versionArgs).start().apply {
+            if (waitFor() == 0) {
+                val version = String(inputStream.readAllBytes()).trim()
+                log.trace { "'$command' version: $version" }
+            } else {
+                log.error { "Invalid version args for command '$command'" }
+            }
+        }
+    }
+}

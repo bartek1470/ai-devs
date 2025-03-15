@@ -10,7 +10,6 @@ data class AiDevsProperties(
     val cacheDir: Path,
     val downloadsDir: Path,
     val tmpDir: Path,
-    val pythonPackagesPath: Path,
     val ollama: AiDevsOllamaProperties,
     val apiKey: String,
     val submitFlagUrl: URL,

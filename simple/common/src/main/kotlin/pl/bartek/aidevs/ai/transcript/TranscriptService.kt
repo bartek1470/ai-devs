@@ -10,6 +10,7 @@ import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Service
 import pl.bartek.aidevs.ai.OllamaManager
 import pl.bartek.aidevs.config.AiDevsProperties
+import pl.bartek.aidevs.util.logCommandInfo
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -43,10 +44,12 @@ class TranscriptService(
         val resultPath = aiDevsProperties.tmpDir.resolve("${transcriptionRequest.path.nameWithoutExtension}.txt")
         val exitCode =
             try {
-                val whisperExecutablePath = aiDevsProperties.pythonPackagesPath.resolve("whisper").toString()
+                logCommandInfo("python", arrayOf("--version"))
+                logCommandInfo("whisper")
+
                 val process =
                     ProcessBuilder(
-                        whisperExecutablePath,
+                        "whisper",
                         "--task",
                         "transcribe",
                         "--model",
