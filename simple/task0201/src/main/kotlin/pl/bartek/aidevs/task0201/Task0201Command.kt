@@ -9,11 +9,13 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.commons.codec.digest.DigestUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jline.terminal.Terminal
-import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.messages.SystemMessage
+import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.http.MediaType
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
+import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.ai.transcript.TranscriptService
 import pl.bartek.aidevs.ai.transcript.TranscriptionRequest
 import pl.bartek.aidevs.ai.transcript.WhisperLanguage
@@ -35,7 +37,6 @@ import pl.bartek.aidevs.util.titleCase
 import pl.bartek.aidevs.util.unzip
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.stream.Collectors
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 
@@ -49,7 +50,7 @@ class Task0201Command(
     private val task0201Config: Task0201Config,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
-    private val chatClient: ChatClient,
+    private val chatService: ChatService,
     private val transcriptService: TranscriptService,
 ) {
     private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0201.cacheFolderName())
@@ -125,15 +126,9 @@ class Task0201Command(
         terminal.println(userPrompt.ansiFormattedSecondaryInfo())
         terminal.print("AI: ".ansiFormattedAi())
         val response =
-            chatClient
-                .prompt()
-                .system(systemPrompt)
-                .user(userPrompt)
-                .stream()
-                .content()
-                .doOnNext { terminal.print(it) }
-                .collect(Collectors.joining(""))
-                .block() ?: throw IllegalStateException("Cannot get chat response")
+            chatService.sendToChat(
+                messages = listOf(SystemMessage(systemPrompt), UserMessage(userPrompt)),
+            ) { terminal.print(it) }
 
         terminal.println()
 

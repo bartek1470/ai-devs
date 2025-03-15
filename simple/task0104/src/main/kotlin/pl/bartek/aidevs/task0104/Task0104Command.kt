@@ -10,7 +10,6 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedSuccess
 import pl.bartek.aidevs.util.println
@@ -21,7 +20,6 @@ import pl.bartek.aidevs.util.println
 )
 class Task0104Command(
     private val terminal: Terminal,
-    private val aiDevsProperties: AiDevsProperties,
     private val task0104Config: Task0104Config,
     private val restClient: RestClient,
 ) {

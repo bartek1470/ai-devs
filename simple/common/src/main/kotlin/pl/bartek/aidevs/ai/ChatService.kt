@@ -28,8 +28,8 @@ class ChatService(
         responseReceived: (String) -> Unit = {},
     ): String {
         val newChatOptions: ChatOptions =
-            chatOptions?.copy<DefaultChatOptions>()?.also { it.model = aiDevsProperties.model.image }
-                ?: ChatOptions.builder().model(aiDevsProperties.model.image).build()
+            chatOptions?.copy<DefaultChatOptions>()?.also { it.model = aiDevsProperties.model.imageDescription }
+                ?: ChatOptions.builder().model(aiDevsProperties.model.imageDescription).build()
         return sendToChat(messages, tools, newChatOptions, streaming, cachePath, responseReceived)
     }
 

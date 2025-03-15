@@ -7,10 +7,10 @@ import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.document.Document
 import org.springframework.ai.document.DocumentTransformer
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.ai.document.transformer.DetailedPolishKeywordMetadataEnricher.Companion.METADATA_KEYWORDS
+import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.util.extractXmlRoot
 
 private const val SYSTEM_MESSAGE = """You are a keyword generator specialized in generating highly accurate and unique keywords specifically in Polish language.
@@ -113,7 +113,7 @@ fun Document.hasKeywords(): Boolean {
 
 @Component
 class DetailedPolishKeywordMetadataEnricher(
-    @Value("\${aidevs.keywords.model}") private val model: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val chatService: ChatService,
     private val xmlMapper: XmlMapper,
 ) : DocumentTransformer {
@@ -132,7 +132,7 @@ class DetailedPolishKeywordMetadataEnricher(
                 chatOptions =
                     ChatOptions
                         .builder()
-                        .model(model)
+                        .model(aiDevsProperties.model.keywords)
                         .build(),
                 streaming = false,
             )

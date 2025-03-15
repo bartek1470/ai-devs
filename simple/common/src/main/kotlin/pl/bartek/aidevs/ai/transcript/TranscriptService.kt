@@ -28,9 +28,6 @@ class TranscriptService(
         Files.createDirectories(aiDevsProperties.tmpDir)
     }
 
-    // TODO [bartek1470] second option -> OpenAiAudioTranscriptionModel - via OpenAI API
-    // TODO [bartek1470] third option -> https://github.com/ggerganov/whisper.cpp
-
     fun transcribe(transcriptionRequest: TranscriptionRequest): String {
         log.info { "Transcribing $transcriptionRequest" }
         return invokeLocalWhisper(transcriptionRequest)

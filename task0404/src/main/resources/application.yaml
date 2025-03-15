@@ -11,8 +11,8 @@ spring:
 
 
 aidevs:
-  api-key: ${AIDEVS_APIKEY}
-  hq-url: ${AIDEVS_HQURL}
+  api-key: ${AIDEVS_API_KEY}
+  hq-url: ${AIDEVS_HQ_URL}
   task:
     0404:
       server-url: ${AIDEVS_TASK_0404_SERVER_URL}

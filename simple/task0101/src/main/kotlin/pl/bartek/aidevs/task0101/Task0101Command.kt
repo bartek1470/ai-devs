@@ -3,7 +3,8 @@ package pl.bartek.aidevs.task0101
 import org.jline.terminal.Terminal
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.messages.SystemMessage
+import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -11,7 +12,7 @@ import org.springframework.shell.command.annotation.Command
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
-import pl.bartek.aidevs.config.AiDevsProperties
+import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedSuccess
@@ -25,10 +26,9 @@ import pl.bartek.aidevs.util.removeExtraWhitespaces
 )
 class Task0101Command(
     private val terminal: Terminal,
-    private val aiDevsProperties: AiDevsProperties,
     private val task0101Config: Task0101Config,
     private val restClient: RestClient,
-    private val chatClient: ChatClient,
+    private val chatService: ChatService,
 ) {
     @Command(
         command = ["0101"],
@@ -115,12 +115,9 @@ class Task0101Command(
 
     private fun askAiAboutAnswer(question: String): String {
         val answer =
-            chatClient
-                .prompt()
-                .system("You have to answer only with a year to the user's question")
-                .user(question)
-                .call()
-                .content()!!
+            chatService.sendToChat(
+                messages = listOf(SystemMessage("You have to answer only with a year to the user's question"), UserMessage(question)),
+            )
         terminal.println("AI response:\n$answer".ansiFormattedAi())
         terminal.println()
         return answer

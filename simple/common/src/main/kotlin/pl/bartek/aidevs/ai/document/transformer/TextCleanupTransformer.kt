@@ -6,10 +6,10 @@ import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.document.Document
 import org.springframework.ai.document.DocumentTransformer
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.ai.document.transformer.TextCleanupTransformer.Companion.METADATA_ORIGINAL_TEXT
+import pl.bartek.aidevs.config.AiDevsProperties
 
 private const val SYSTEM_MESSAGE = """Clean the provided user's text in Polish. Follow the steps below strictly:
 1. REMOVE unnecessary new lines and all extra spaces, including spaces between characters in individual words.
@@ -38,7 +38,7 @@ fun Document.originalText(): String =
 
 @Component
 class TextCleanupTransformer(
-    @Value("\${aidevs.text-cleanup.model}") private val model: String,
+    private val aiDevsProperties: AiDevsProperties,
     private val chatService: ChatService,
 ) : DocumentTransformer {
     override fun apply(documents: List<Document>): List<Document> = documents.map { transformIfNeeded(it) }
@@ -56,7 +56,7 @@ class TextCleanupTransformer(
                 chatOptions =
                     ChatOptions
                         .builder()
-                        .model(model)
+                        .model(aiDevsProperties.model.textCleanup)
                         .build(),
                 streaming = false,
             )

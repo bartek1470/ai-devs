@@ -66,7 +66,7 @@ class Task0205Command(
                 figure.selectFirst("img")?.attr("abs:src") ?: throw IllegalStateException("Unable to find figure image")
             val imageResource = UrlResource(imageUrl)
             val imageDescription =
-                chatService.sendToChat(
+                chatService.sendToChatWithImageSupport(
                     listOf(UserMessage("Describe the image", Media(MediaType.IMAGE_PNG, imageResource))),
                 ) { terminal.print(it) }
             val caption = figure.selectFirst("figcaption")?.text() ?: ""

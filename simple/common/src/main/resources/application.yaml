@@ -45,9 +45,9 @@ aidevs:
   tmp-dir: ${aidevs.cache-dir}/.tmp
   ollama:
     unload-models-before-local-whisper: true
-  api-key: ${AIDEVS_APIKEY}
-  submit-flag-url: ${AIDEVS_SUBMITFLAGURL}
-  report-url: ${AIDEVS_REPORTURL}
+  api-key: ${AIDEVS_API_KEY}
+  submit-flag-url: ${AIDEVS_SUBMIT_FLAG_URL}
+  report-url: ${AIDEVS_REPORT_URL}
 
 logging:
   file:

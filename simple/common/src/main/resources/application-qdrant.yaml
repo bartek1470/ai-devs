@@ -4,7 +4,7 @@ spring:
       qdrant:
         host: ${QDRANT_HOST}
         port: ${QDRANT_PORT:6334}
-        api-key: ${QDRANT_APIKEY}
-        collection-name: ${QDRANT_COLLECTIONNAME:ai-devs}
-        use-tls: ${QDRANT_USETLS:true}
+        api-key: ${QDRANT_API_KEY}
+        collection-name: ${QDRANT_COLLECTION_NAME:ai-devs}
+        use-tls: ${QDRANT_USE_TLS:true}
         initialize-schema: true

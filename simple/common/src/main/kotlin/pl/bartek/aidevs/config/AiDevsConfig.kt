@@ -17,7 +17,11 @@ data class AiDevsProperties(
 )
 
 data class ModelConfig(
-    val image: String,
+    val default: String,
+    val imageDescription: String,
+    val keywords: String,
+    val textCleanup: String,
+    val title: String,
 )
 
 data class AiDevsOllamaProperties(

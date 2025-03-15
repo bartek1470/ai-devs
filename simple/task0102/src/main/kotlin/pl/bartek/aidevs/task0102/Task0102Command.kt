@@ -1,11 +1,12 @@
 package pl.bartek.aidevs.task0102
 
 import org.jline.terminal.Terminal
-import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.messages.SystemMessage
+import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
-import pl.bartek.aidevs.config.AiDevsProperties
+import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.util.ansiFormattedAi
 import pl.bartek.aidevs.util.ansiFormattedError
 import pl.bartek.aidevs.util.ansiFormattedHuman
@@ -21,10 +22,9 @@ import pl.bartek.aidevs.util.println
 )
 class Task0102Command(
     private val terminal: Terminal,
-    private val aiDevsProperties: AiDevsProperties,
     private val task0102Config: Task0102Config,
     private val restClient: RestClient,
-    private val chatClient: ChatClient,
+    private val chatService: ChatService,
 ) {
     private var patrollingRobotConversation: PatrollingRobotConversation = PatrollingRobotConversation()
 
@@ -59,13 +59,7 @@ class Task0102Command(
                 |You MUST follow the rules above.
                 |ALWAYS translate your answer to English language.
             """.trimMargin()
-        val content =
-            chatClient
-                .prompt()
-                .system(systemPrompt)
-                .user("Question: $question")
-                .call()
-                .content() ?: throw IllegalStateException("No content generated")
+        val content = chatService.sendToChat(messages = listOf(SystemMessage(systemPrompt), UserMessage("Question: $question")))
         return content.trim()
     }
 

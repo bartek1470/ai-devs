@@ -28,6 +28,7 @@ import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.core.io.PathResource
 import org.springframework.core.io.Resource
@@ -42,6 +43,7 @@ import pl.bartek.aidevs.ai.document.transformer.TitleEnricher
 import pl.bartek.aidevs.ai.document.transformer.hasKeywords
 import pl.bartek.aidevs.ai.document.transformer.keywords
 import pl.bartek.aidevs.config.AiDevsProperties
+import pl.bartek.aidevs.config.Profile.QDRANT
 import pl.bartek.aidevs.course.TaskId
 import pl.bartek.aidevs.course.api.AiDevsApiClient
 import pl.bartek.aidevs.db.keywords.Keywords
@@ -75,13 +77,12 @@ import kotlin.time.toJavaDuration
 private const val IMAGE_DIMENSIONS_THRESHOLD = 1024
 private const val SMALL_IMAGE_SUFFIX = "_small"
 
-// @Profile(QDRANT, OPENAI)
+@Profile(QDRANT)
 @Service
 class Task0405Service(
     private val aiDevsProperties: AiDevsProperties,
     private val task0405Config: Task0405Config,
     @Value("\${spring.ai.vectorstore.qdrant.collection-name}") private val collectionName: String,
-    @Value("\${aidevs.image-description.model}") private val imageDescriptionModel: String,
     private val restClient: RestClient,
     private val chatService: ChatService,
     private val aiDevsApiClient: AiDevsApiClient,
@@ -140,7 +141,6 @@ class Task0405Service(
         val aiAnswer =
             chatService.sendToChat(
                 listOf(
-                    // TODO [bartek1470] modify the prompt to utilize tools
                     SystemMessage(
                         """
                         |Answer the user's question based on the provided context. Utilize the diary notes or other documents given in the context to deduce the most probable and concise answer. The final response should be translated into Polish and output in a specified XML format.
@@ -488,7 +488,7 @@ class Task0405Service(
                 }
 
             async(Dispatchers.IO) {
-                chatService.sendToChat(
+                chatService.sendToChatWithImageSupport(
                     listOf(
                         UserMessage(
                             """
@@ -502,7 +502,6 @@ class Task0405Service(
                         ChatOptions
                             .builder()
                             .temperature(0.0)
-                            .model(imageDescriptionModel)
                             .build(),
                 )
             }

@@ -19,20 +19,16 @@ spring:
       chat:
         enabled: true
         options:
-          model: ${OLLAMA_DEFAULT_CHAT_MODEL:llama3.2:3b}
+          model: ${aidevs.model.default}
       embedding:
         enabled: true
-        model: nomic-embed-text
-
+        model: ${aidevs.model.embedding}
 
 aidevs:
   model:
-    image: moondream:1.8b
-  image-description:
-    model: moondream:1.8b
-  keywords:
-    model: ${spring.ai.ollama.chat.options.model}
-  text-cleanup:
-    model: ${spring.ai.ollama.chat.options.model}
-  title:
-    model: ${spring.ai.ollama.chat.options.model}
+    default: llama3.2:3b
+    embedding: nomic-embed-text
+    image-description: moondream:1.8b
+    keywords: ${aidevs.model.default}
+    text-cleanup: ${aidevs.model.default}
+    title: ${aidevs.model.default}

@@ -5,7 +5,6 @@ import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.tool.function.FunctionToolCallback
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ansi.AnsiColor.YELLOW
 import org.springframework.boot.ansi.AnsiStyle.BOLD
 import org.springframework.core.ParameterizedTypeReference
@@ -23,20 +22,17 @@ import pl.bartek.aidevs.util.executeCommand
 import pl.bartek.aidevs.util.print
 import pl.bartek.aidevs.util.println
 import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.io.path.absolute
 
 @Service
 class Task0403Service(
     private val aiDevsProperties: AiDevsProperties,
     private val task0403Config: Task0403Config,
-    @Value("\${python.packages.path}") pythonPackagesPath: Path,
     private val restClient: RestClient,
     private val chatService: ChatService,
     private val aiDevsApiClient: AiDevsApiClient,
 ) {
     private val cacheDir = aiDevsProperties.cacheDir.resolve(TaskId.TASK_0403.cacheFolderName()).absolute()
-    private val markitdownExecPath = pythonPackagesPath.resolve("markitdown").toAbsolutePath().toString()
 
     init {
         Files.createDirectories(this.cacheDir)
@@ -49,7 +45,7 @@ class Task0403Service(
             VisitSiteAction(
                 task0403Config.baseUrl.toString(),
                 sitesTempDir,
-            ) { htmlPath -> markitdownExecPath.executeCommand(htmlPath.toString()) }
+            ) { htmlPath -> "markitdown".executeCommand(htmlPath.toString()) }
 
         val rootPageContent = visitSiteAction.invoke(VisitSiteRequest("/"))
 

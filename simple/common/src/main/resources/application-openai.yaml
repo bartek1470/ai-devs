@@ -5,25 +5,22 @@ spring:
       chat:
         enabled: true
         options:
-          model: ${OPENAI_DEFAULT_CHAT_MODEL:gpt-4o-mini}
+          model: ${aidevs.model.default}
       image:
         enabled: true
-        options:
-          model: ${OPENAI_DEFAULT_IMAGE_GENERATION_MODEL:dall-e-2}
       audio:
         transcription:
-          enabled: true
-          options:
-            model: ${OPENAI_DEFAULT_AUDIO_TRANSCRIPTION_MODEL:whisper-1}
+          enabled: false
       embedding:
         enabled: true
+        options:
+          model: ${aidevs.model.embedding}
 
 aidevs:
-  image-description:
-    model: gpt-4o
-  keywords:
-    model: gpt-4o
-  text-cleanup:
-    model: gpt-4o
-  title:
-    model: gpt-4o-mini
+  model:
+    default: gpt-4o-mini
+    embedding: text-embedding-ada-002
+    image-description: gpt-4o
+    keywords: gpt-4o
+    text-cleanup: gpt-4o
+    title: gpt-4o-mini

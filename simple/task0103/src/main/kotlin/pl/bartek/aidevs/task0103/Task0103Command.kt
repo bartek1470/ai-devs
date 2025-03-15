@@ -1,9 +1,10 @@
 package pl.bartek.aidevs.task0103
 
 import org.jline.terminal.Terminal
-import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.shell.command.annotation.Command
 import org.springframework.web.client.RestClient
+import pl.bartek.aidevs.ai.ChatService
 import pl.bartek.aidevs.config.AiDevsProperties
 import pl.bartek.aidevs.course.api.AiDevsAnswer
 import pl.bartek.aidevs.course.api.AiDevsApiClient
@@ -18,7 +19,7 @@ class Task0103Command(
     private val terminal: Terminal,
     private val aiDevsProperties: AiDevsProperties,
     private val task0103Config: Task0103Config,
-    private val chatClient: ChatClient,
+    private val chatService: ChatService,
     private val aiDevsApiClient: AiDevsApiClient,
     private val restClient: RestClient,
 ) {
@@ -42,10 +43,7 @@ class Task0103Command(
                         terminal.println(it.question)
                         terminal.flush()
                         val response =
-                            chatClient
-                                .prompt(it.question)
-                                .call()
-                                .content() ?: throw IllegalStateException("Cannot get answer")
+                            chatService.sendToChat(messages = listOf(UserMessage(it.question)))
                         terminal.println(response)
                         terminal.flush()
 
