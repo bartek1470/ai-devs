@@ -48,50 +48,6 @@ aidevs:
   api-key: ${AIDEVS_APIKEY}
   submit-flag-url: ${AIDEVS_SUBMITFLAGURL}
   report-url: ${AIDEVS_REPORTURL}
-  task:
-    poligon:
-      data-url: ${AIDEVS_TASK_POLIGON_DATAURL}
-      answer-url: ${AIDEVS_TASK_POLIGON_ANSWERURL}
-    task0101:
-      url: ${AIDEVS_TASK_0101_ROBOTSYSTEM_URL}
-      username: ${AIDEVS_TASK_0101_ROBOTSYSTEM_USERNAME}
-      password: ${AIDEVS_TASK_0101_ROBOTSYSTEM_PASSWORD}
-    task0102:
-      api-url: ${AIDEVS_TASK_0102_CONVERSATIONURL}
-    task0103:
-      data-url: ${AIDEVS_TASK_0103_DATAURL}
-    task0104:
-      file-base-url: ${AIDEVS_TASK_0104_FILEBASEURL}
-      answer-url: ${AIDEVS_TASK_0104_ANSWERURL}
-    task0105:
-      data-url: ${AIDEVS_TASK_0105_DATAURL}
-    task0201:
-      data-url: ${AIDEVS_TASK_0201_DATAURL}
-    task0203:
-      data-url: ${AIDEVS_TASK_0203_DATAURL}
-    task0204:
-      data-url: ${AIDEVS_TASK_0204_DATAURL}
-    task0205:
-      data-url: ${AIDEVS_TASK_0205_DATAURL}
-      article-url: ${AIDEVS_TASK_0205_ARTICLEURL}
-    task0301:
-      data-url: ${AIDEVS_TASK_0301_DATAURL}
-    task0302:
-      data-url: ${AIDEVS_TASK_0302_DATAURL}
-      data-password: ${AIDEVS_TASK_0302_DATAPASSWORD}
-    task0303:
-      api-url: ${AIDEVS_TASK_0303_APIURL}
-    task0304:
-      data-url: ${AIDEVS_TASK_0304_DATAURL}
-      api-url: ${AIDEVS_TASK_0304_APIURL}
-    task0402:
-      data-url: ${AIDEVS_TASK_0402_DATA_URL}
-    task0403:
-      base-url: ${AIDEVS_TASK_0403_BASE_URL}
-      questions-url: ${AIDEVS_TASK_0403_QUESTIONS_URL}
-    task0405:
-      data-url: ${AIDEVS_TASK_0405_DATA_URL}
-      questions-url: ${AIDEVS_TASK_0405_QUESTIONS_URL}
 
 logging:
   file:
