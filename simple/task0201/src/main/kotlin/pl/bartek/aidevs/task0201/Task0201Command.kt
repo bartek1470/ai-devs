@@ -164,6 +164,7 @@ class Task0201Command(
                     val transcription = transcriptService.transcribe(TranscriptionRequest(path, language = WhisperLanguage.POLISH))
                     transaction {
                         AudioResource.new {
+                            this.name = path.nameWithoutExtension.titleCase()
                             this.path = path
                             this.hash = hash
                             this.transcription = transcription.removeExtraWhitespaces().trim()
