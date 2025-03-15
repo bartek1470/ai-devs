@@ -222,12 +222,16 @@ class Task0405Service(
         documents.map { doc ->
             val convertedMetadata =
                 doc.metadata.mapValues { (_, value) ->
-                    if (value is Set<*>) {
-                        value.toTypedArray()
-                    } else if (value is Path) {
-                        value.toString()
-                    } else {
-                        value
+                    when (value) {
+                        is Set<*> -> {
+                            value.toTypedArray()
+                        }
+                        is Path -> {
+                            value.toString()
+                        }
+                        else -> {
+                            value
+                        }
                     }
                 }
             doc
